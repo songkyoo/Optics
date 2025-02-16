@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens", "Lens\Lens.csproj", "{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Generator", "Lens.Generator\Lens.Generator.csproj", "{6A630302-C420-46FF-AD47-55CED2FC395C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Tests", "Lens.Tests\Lens.Tests.csproj", "{455FBB6C-F5C6-41ED-8CDA-51334724BF58}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6A630302-C420-46FF-AD47-55CED2FC395C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6A630302-C420-46FF-AD47-55CED2FC395C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6A630302-C420-46FF-AD47-55CED2FC395C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6A630302-C420-46FF-AD47-55CED2FC395C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{455FBB6C-F5C6-41ED-8CDA-51334724BF58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{455FBB6C-F5C6-41ED-8CDA-51334724BF58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{455FBB6C-F5C6-41ED-8CDA-51334724BF58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{455FBB6C-F5C6-41ED-8CDA-51334724BF58}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

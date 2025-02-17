@@ -21,7 +21,6 @@ public static partial class Lens
             {
                 var value0 = source;
                 var value1 = lens1.Get(value0);
-                var value2 = lens2.Get(value1);
 
                 var newValue1 = lens2.Set(value1, value);
                 var newValue0 = lens1.Set(value0, newValue1);
@@ -52,7 +51,6 @@ public static partial class Lens
                 var value0 = source;
                 var value1 = lens1.Get(value0);
                 var value2 = lens2.Get(value1);
-                var value3 = lens3.Get(value2);
 
                 var newValue2 = lens3.Set(value2, value);
                 var newValue1 = lens2.Set(value1, newValue2);
@@ -87,7 +85,6 @@ public static partial class Lens
                 var value1 = lens1.Get(value0);
                 var value2 = lens2.Get(value1);
                 var value3 = lens3.Get(value2);
-                var value4 = lens4.Get(value3);
 
                 var newValue3 = lens4.Set(value3, value);
                 var newValue2 = lens3.Set(value2, newValue3);
@@ -126,7 +123,6 @@ public static partial class Lens
                 var value2 = lens2.Get(value1);
                 var value3 = lens3.Get(value2);
                 var value4 = lens4.Get(value3);
-                var value5 = lens5.Get(value4);
 
                 var newValue4 = lens5.Set(value4, value);
                 var newValue3 = lens4.Set(value3, newValue4);
@@ -169,7 +165,6 @@ public static partial class Lens
                 var value3 = lens3.Get(value2);
                 var value4 = lens4.Get(value3);
                 var value5 = lens5.Get(value4);
-                var value6 = lens6.Get(value5);
 
                 var newValue5 = lens6.Set(value5, value);
                 var newValue4 = lens5.Set(value4, newValue5);
@@ -216,7 +211,6 @@ public static partial class Lens
                 var value4 = lens4.Get(value3);
                 var value5 = lens5.Get(value4);
                 var value6 = lens6.Get(value5);
-                var value7 = lens7.Get(value6);
 
                 var newValue6 = lens7.Set(value6, value);
                 var newValue5 = lens6.Set(value5, newValue6);
@@ -267,7 +261,6 @@ public static partial class Lens
                 var value5 = lens5.Get(value4);
                 var value6 = lens6.Get(value5);
                 var value7 = lens7.Get(value6);
-                var value8 = lens8.Get(value7);
 
                 var newValue7 = lens8.Set(value7, value);
                 var newValue6 = lens7.Set(value6, newValue7);

@@ -17,5 +17,10 @@
   <ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
     <PackageReference Include="System.Collections.Immutable" Version="9.0.2" />
   </ItemGroup>
+  
+  <Target Name="TransformT4TextTemplates" BeforeTargets="BeforeBuild">
+    <Exec Command="dotnet tool restore" />
+    <Exec Command="dotnet t4 Lens.Compose.tt -p:MaxCount=8" />
+  </Target>
 
 </Project>

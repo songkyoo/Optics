@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Generator", "Lens.Gene
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Tests", "Lens.Tests\Lens.Tests.csproj", "{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Package", "Lens.Package\Lens.Package.csproj", "{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

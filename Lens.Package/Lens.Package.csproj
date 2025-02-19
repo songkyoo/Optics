@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Lens.Package</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Song, Gyu</Authors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Lens\Lens.csproj" />
+    <ProjectReference Include="..\Lens.Generator\Lens.Generator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\Lens\bin\Release\netstandard2.0\Lens.dll" Pack="true" PackagePath="lib/netstandard2.0/" />
+    <None Include="..\Lens.Generator\bin\Release\netstandard2.0\Lens.Generator.dll" Pack="true" PackagePath="lib/netstandard2.0/" />
+  </ItemGroup>
+
+</Project>

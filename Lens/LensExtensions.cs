@@ -28,4 +28,17 @@ public static class LensExtensions
             }
         );
     }
+
+    public static T Update<T, TValue>(
+        this Lens<T, TValue> lens,
+        T source,
+        Func<TValue, TValue> update
+    )
+    {
+        var value = lens.Get(source);
+        var newValue = update(value);
+        var newSource = lens.Set(source, newValue);
+
+        return newSource;
+    }
 }

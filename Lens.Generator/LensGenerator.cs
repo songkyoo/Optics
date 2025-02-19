@@ -19,7 +19,7 @@ public class LensGenerator : IIncrementalGenerator
     {
         var invocationExpressionSyntax = (InvocationExpressionSyntax)generatorSyntaxContext.Node;
 
-        if (invocationExpressionSyntax.Expression is MemberAccessExpressionSyntax
+        if (invocationExpressionSyntax.Expression is not MemberAccessExpressionSyntax
             {
                 Name: GenericNameSyntax
                 {
@@ -29,19 +29,24 @@ public class LensGenerator : IIncrementalGenerator
             }
         )
         {
-            var symbol = generatorSyntaxContext.SemanticModel.GetSymbolInfo(genericName).Symbol as IMethodSymbol;
-            if (symbol?.IsStatic is true &&
-                ToFullyQualifiedName(symbol.ContainingType) == "global::Macaron.Optics.Lens"
-            )
-            {
-                return generatorSyntaxContext
-                    .SemanticModel
-                    .GetTypeInfo(genericName.TypeArgumentList.Arguments[0])
-                    .Type as INamedTypeSymbol;
-            }
+            return null;
         }
 
-        return null;
+        var symbol = generatorSyntaxContext.SemanticModel.GetSymbolInfo(genericName).Symbol as IMethodSymbol;
+        if (symbol?.IsStatic is not true ||
+            ToFullyQualifiedName(symbol.ContainingType) != "global::Macaron.Optics.Lens"
+        )
+        {
+            return null;
+        }
+
+        var namedTypeSymbol = generatorSyntaxContext
+            .SemanticModel
+            .GetTypeInfo(genericName.TypeArgumentList.Arguments[0])
+            .Type as INamedTypeSymbol;
+        return namedTypeSymbol?.IsRecord is true || namedTypeSymbol?.TypeKind == TypeKind.Struct
+            ? namedTypeSymbol
+            : null;
     }
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)

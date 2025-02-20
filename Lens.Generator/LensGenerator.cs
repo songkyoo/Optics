@@ -24,19 +24,34 @@ public class LensGenerator : IIncrementalGenerator
             return null;
         }
 
-        var symbol = generatorSyntaxContext.SemanticModel.GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
-        if (symbol?.IsStatic is not true ||
-            ToFullyQualifiedName(symbol.ContainingType) != "global::Macaron.Optics.Lens"
+        var methodSymbol = generatorSyntaxContext.SemanticModel.GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
+        if (methodSymbol?.IsStatic is not true ||
+            ToFullyQualifiedName(methodSymbol.ContainingType) != "global::Macaron.Optics.Lens"
         )
         {
             return null;
         }
 
-        var namedTypeSymbol = generatorSyntaxContext
+        var typeArgument = genericNameSyntax.TypeArgumentList.Arguments[0];
+        var symbolInfo = generatorSyntaxContext
             .SemanticModel
-            .GetTypeInfo(genericNameSyntax.TypeArgumentList.Arguments[0])
-            .Type as INamedTypeSymbol;
-        return namedTypeSymbol?.IsRecord is true || namedTypeSymbol?.TypeKind == TypeKind.Struct
+            .GetSymbolInfo(genericNameSyntax.TypeArgumentList.Arguments[0]);
+
+        var namedTypeSymbol = symbolInfo.Symbol as INamedTypeSymbol;
+        if (namedTypeSymbol is null)
+        {
+            return null;
+        }
+
+        // Nullable한 형식은 지원하지 않는다.
+        if ((namedTypeSymbol.IsValueType && namedTypeSymbol.ToString().EndsWith("?")) ||
+            typeArgument.ToString().EndsWith("?")
+        )
+        {
+            return null;
+        }
+
+        return namedTypeSymbol.IsRecord is true || namedTypeSymbol.TypeKind == TypeKind.Struct
             ? namedTypeSymbol
             : null;
     }

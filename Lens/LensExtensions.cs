@@ -1,6 +1,16 @@
 using System.Collections.Immutable;
 
+using static Macaron.Optics.Option;
+
 namespace Macaron.Optics;
+
+file static class IntExtensions
+{
+    public static bool IsWithinBoundsOf<T>(this int value, IReadOnlyList<T> list)
+    {
+        return value >= 0 && value < list.Count;
+    }
+}
 
 public static class LensExtensions
 {
@@ -68,7 +78,7 @@ public static class LensExtensions
             {
                 var value0 = source;
                 var value1 = lens1.Get(value0);
-                var value2 = value1.IsSome ? lens2.Get(value1.Value) : Option.None<TValue2>();
+                var value2 = value1.IsSome ? lens2.Get(value1.Value) : None<TValue2>();
 
                 return value2;
             },
@@ -77,7 +87,7 @@ public static class LensExtensions
                 var value0 = source;
                 var value1 = lens1.Get(value0);
 
-                var newValue1 = value1.IsSome ? Option.Some(lens2.Set(value1.Value, value)) : Option.None<TValue1>();
+                var newValue1 = value1.IsSome ? Some(lens2.Set(value1.Value, value)) : None<TValue1>();
                 var newValue0 = newValue1.IsSome ? lens1.Set(source, newValue1.Value) : source;
 
                 return newValue0;
@@ -96,7 +106,7 @@ public static class LensExtensions
             {
                 var value0 = source;
                 var value1 = lens1.Get(value0);
-                var value2 = lens2.Get(value1.IsSome ? value1.Value : getDefaultValue(value0));
+                var value2 = lens2.Get(value1.GetOrElse(getDefaultValue(value0)));
 
                 return value2;
             },
@@ -105,7 +115,7 @@ public static class LensExtensions
                 var value0 = source;
                 var value1 = lens1.Get(value0);
 
-                var newValue1 = lens2.Set(value1.IsSome ? value1.Value : getDefaultValue(value0), value);
+                var newValue1 = lens2.Set(value1.GetOrElse(getDefaultValue(value0)), value);
                 var newValue0 = lens1.Set(source, newValue1);
 
                 return newValue0;
@@ -113,27 +123,42 @@ public static class LensExtensions
         );
     }
 
+    public static OptionLens<T, TValue> ToOptionLens<T, TValue>(this Lens<T, TValue> lens)
+    {
+        return OptionLens<T, TValue>.Of(
+            getter: source => Some(lens.Get(source)),
+            setter: (source, value) => lens.Set(source, value)
+        );
+    }
+
+    public static Lens<T, TValue> ToLens<T, TValue>(this OptionLens<T, TValue> lens, Func<T, TValue> getDefaultValue)
+    {
+        return Lens<T, TValue>.Of(
+            getter: source => lens.Get(source).GetOrElse(getDefaultValue(source)),
+            setter: (source, value) => lens.Get(source) is var val && val.IsSome ? lens.Set(source, val.Value) : source
+        );
+    }
+
     public static OptionLens<T, TValue> Key<T, TKey, TValue>(
         this Lens<T, ImmutableDictionary<TKey, TValue>> lens,
-        TKey key,
-        Func<ImmutableDictionary<TKey, TValue>, TKey, TValue, ImmutableDictionary<TKey, TValue>>? setItem = null
+        TKey key
     ) where TKey : notnull
     {
         return OptionLens<T, TValue>.Of(
-            getter: source => lens.Get(source).TryGetValue(key, out var value)
-                ? Option.Some(value)
-                : Option.None<TValue>(),
-            setter: (source, value) => lens.Set(source, (setItem ?? SetItem)(lens.Get(source), key, value))
+            getter: source => lens.Get(source).TryGetValue(key, out var value) ? Some(value) : None<TValue>(),
+            setter: (source, value) => lens.Set(source, lens.Get(source).SetItem(key, value))
         );
+    }
 
-        #region Local Functions
-        static ImmutableDictionary<TKey, TValue> SetItem(ImmutableDictionary<TKey, TValue> dict, TKey key, TValue value)
-        {
-            return dict.ContainsKey(key)
-                ? dict.SetItem(key, value)
-                : throw new KeyNotFoundException($"The given key '{key}' was not present in the dictionary.");
-        }
-        #endregion
+    public static OptionLens<T, TValue> Key<T, TKey, TValue>(
+        this Lens<T, ImmutableSortedDictionary<TKey, TValue>> lens,
+        TKey key
+    ) where TKey : notnull
+    {
+        return OptionLens<T, TValue>.Of(
+            getter: source => lens.Get(source).TryGetValue(key, out var value) ? Some(value) : None<TValue>(),
+            setter: (source, value) => lens.Set(source, lens.Get(source).SetItem(key, value))
+        );
     }
 
     public static OptionLens<T, TValue> Index<T, TValue>(
@@ -142,11 +167,26 @@ public static class LensExtensions
     )
     {
         return OptionLens<T, TValue>.Of(
-            getter: source => index >= 0 && index < lens.Get(source).Count
-                ? Option.Some(lens.Get(source)[index])
-                : Option.None<TValue>(),
-            setter: (source, value) => index >= 0 && index < lens.Get(source).Count
-                ? lens.Set(source, lens.Get(source).SetItem(index, value))
+            getter: source => lens.Get(source) is var list && index.IsWithinBoundsOf(list)
+                ? Some(list[index])
+                : None<TValue>(),
+            setter: (source, value) => lens.Get(source) is var list && index.IsWithinBoundsOf(list)
+                ? lens.Set(source, list.SetItem(index, value))
+                : source
+        );
+    }
+
+    public static OptionLens<T, TValue> Index<T, TValue>(
+        this Lens<T, ImmutableArray<TValue>> lens,
+        int index
+    )
+    {
+        return OptionLens<T, TValue>.Of(
+            getter: source => lens.Get(source) is var array && index.IsWithinBoundsOf(array)
+                ? Some(array[index])
+                : None<TValue>(),
+            setter: (source, value) => lens.Get(source) is var array && index.IsWithinBoundsOf(array)
+                ? lens.Set(source, array.SetItem(index, value))
                 : source
         );
     }
@@ -156,9 +196,7 @@ public static class LensExtensions
     )
     {
         return Lens<T, TValue>.Of(
-            getter: source => lens.Get(source) is var option && option.IsSome
-                ? option.Value
-                : defaultValue,
+            getter: source => lens.Get(source) is var option && option.IsSome ? option.Value : defaultValue,
             setter: (source, value) => lens.Set(source, value)
         );
     }

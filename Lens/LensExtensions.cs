@@ -36,7 +36,33 @@ file static class FileScopeExtensions
 
 public static class LensExtensions
 {
-    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static T Update<T, TValue>(
+        this Lens<T, TValue> lens,
+        T source,
+        Func<TValue, TValue> update
+    )
+    {
+        var value = lens.Get(source);
+        var newValue = update(value);
+        var newSource = lens.Set(source, newValue);
+
+        return newSource;
+    }
+
+    public static T Update<T, TValue>(
+        this OptionLens<T, TValue> lens,
+        T source,
+        Func<Option<TValue>, Option<TValue>> update
+    )
+    {
+        var value = lens.Get(source);
+        var newValue = update(value);
+        var newSource = newValue.IsSome ? lens.Set(source, newValue.Value) : source;
+
+        return newSource;
+    }
+
+    public static Lens<T, TValue2> Chain<T, TValue1, TValue2>(
         this Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2
     )
@@ -63,7 +89,7 @@ public static class LensExtensions
         );
     }
 
-    public static OptionLens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static OptionLens<T, TValue2> Chain<T, TValue1, TValue2>(
         this Lens<T, TValue1> lens1,
         OptionLens<TValue1, TValue2> lens2
     )
@@ -90,7 +116,7 @@ public static class LensExtensions
         );
     }
 
-    public static OptionLens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static OptionLens<T, TValue2> Chain<T, TValue1, TValue2>(
         this OptionLens<T, TValue1> lens1,
         OptionLens<TValue1, TValue2> lens2
     )
@@ -117,7 +143,7 @@ public static class LensExtensions
         );
     }
 
-    public static OptionLens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static OptionLens<T, TValue2> Chain<T, TValue1, TValue2>(
         this OptionLens<T, TValue1> lens1,
         OptionLens<Option<TValue1>, TValue2> lens2
     )
@@ -144,7 +170,7 @@ public static class LensExtensions
         );
     }
 
-    public static OptionLens<Option<T>, TValue2> Compose<T, TValue1, TValue2>(
+    public static OptionLens<Option<T>, TValue2> Chain<T, TValue1, TValue2>(
         this OptionLens<Option<T>, TValue1> lens1,
         OptionLens<Option<TValue1>, TValue2> lens2
     )
@@ -171,7 +197,7 @@ public static class LensExtensions
         );
     }
 
-    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static Lens<T, TValue2> Chain<T, TValue1, TValue2>(
         this OptionLens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Func<T, TValue1> getDefaultValue
@@ -284,31 +310,5 @@ public static class LensExtensions
             getter: source => lens.Get(source) is var option && option.IsSome ? option.Value : defaultValue,
             setter: (source, value) => lens.Set(source, value)
         );
-    }
-
-    public static T Update<T, TValue>(
-        this Lens<T, TValue> lens,
-        T source,
-        Func<TValue, TValue> update
-    )
-    {
-        var value = lens.Get(source);
-        var newValue = update(value);
-        var newSource = lens.Set(source, newValue);
-
-        return newSource;
-    }
-
-    public static T Update<T, TValue>(
-        this OptionLens<T, TValue> lens,
-        T source,
-        Func<Option<TValue>, Option<TValue>> update
-    )
-    {
-        var value = lens.Get(source);
-        var newValue = update(value);
-        var newSource = newValue.IsSome ? lens.Set(source, newValue.Value) : source;
-
-        return newSource;
     }
 }

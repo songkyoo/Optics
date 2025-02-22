@@ -3,7 +3,7 @@ namespace Macaron.Optics;
 
 public static partial class Lens
 {
-    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static Lens<T, TValue2> Combine<T, TValue1, TValue2>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2
     )
@@ -30,7 +30,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue3> Compose<T, TValue1, TValue2, TValue3>(
+    public static Lens<T, TValue3> Combine<T, TValue1, TValue2, TValue3>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3
@@ -61,7 +61,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue4> Compose<T, TValue1, TValue2, TValue3, TValue4>(
+    public static Lens<T, TValue4> Combine<T, TValue1, TValue2, TValue3, TValue4>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3,
@@ -96,7 +96,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue5> Compose<T, TValue1, TValue2, TValue3, TValue4, TValue5>(
+    public static Lens<T, TValue5> Combine<T, TValue1, TValue2, TValue3, TValue4, TValue5>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3,
@@ -135,7 +135,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue6> Compose<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6>(
+    public static Lens<T, TValue6> Combine<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3,
@@ -178,7 +178,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue7> Compose<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6, TValue7>(
+    public static Lens<T, TValue7> Combine<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6, TValue7>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3,
@@ -225,7 +225,7 @@ public static partial class Lens
         );
     }
 
-    public static Lens<T, TValue8> Compose<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6, TValue7, TValue8>(
+    public static Lens<T, TValue8> Combine<T, TValue1, TValue2, TValue3, TValue4, TValue5, TValue6, TValue7, TValue8>(
         Lens<T, TValue1> lens1,
         Lens<TValue1, TValue2> lens2,
         Lens<TValue2, TValue3> lens3,

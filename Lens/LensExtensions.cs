@@ -4,8 +4,30 @@ using static Macaron.Optics.Option;
 
 namespace Macaron.Optics;
 
-file static class IntExtensions
+file static class FileScopeExtensions
 {
+    public static Option<TValue> GetItem<TKey, TValue>(this ImmutableDictionary<TKey, TValue> dict, TKey key)
+        where TKey : notnull
+    {
+        return dict.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+    }
+
+    public static Option<TValue> GetItem<TKey, TValue>(this ImmutableSortedDictionary<TKey, TValue> dict, TKey key)
+        where TKey : notnull
+    {
+        return dict.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+    }
+
+    public static Option<T> GetItem<T>(this ImmutableList<T> list, int index)
+    {
+        return index.IsWithinBoundsOf(list) ? Some(list[index]) : None<T>();
+    }
+
+    public static Option<T> GetItem<T>(this ImmutableArray<T> array, int index)
+    {
+        return index.IsWithinBoundsOf(array) ? Some(array[index]) : None<T>();
+    }
+
     public static bool IsWithinBoundsOf<T>(this int value, IReadOnlyList<T> list)
     {
         return value >= 0 && value < list.Count;
@@ -144,9 +166,10 @@ public static class LensExtensions
         TKey key
     ) where TKey : notnull
     {
-        return OptionLens<T, TValue>.Of(
-            getter: source => lens.Get(source).TryGetValue(key, out var value) ? Some(value) : None<TValue>(),
-            setter: (source, value) => lens.Set(source, lens.Get(source).SetItem(key, value))
+        return lens.AtKey(
+            getter: static (dict, key) => dict.GetItem(key),
+            setter: static (dict, key, value) => dict.SetItem(key, value),
+            key: key
         );
     }
 
@@ -155,9 +178,10 @@ public static class LensExtensions
         TKey key
     ) where TKey : notnull
     {
-        return OptionLens<T, TValue>.Of(
-            getter: source => lens.Get(source).TryGetValue(key, out var value) ? Some(value) : None<TValue>(),
-            setter: (source, value) => lens.Set(source, lens.Get(source).SetItem(key, value))
+        return lens.AtKey(
+            getter: static (dict, key) => dict.GetItem(key),
+            setter: static (dict, key, value) => dict.SetItem(key, value),
+            key: key
         );
     }
 
@@ -166,13 +190,10 @@ public static class LensExtensions
         int index
     )
     {
-        return OptionLens<T, TValue>.Of(
-            getter: source => lens.Get(source) is var list && index.IsWithinBoundsOf(list)
-                ? Some(list[index])
-                : None<TValue>(),
-            setter: (source, value) => lens.Get(source) is var list && index.IsWithinBoundsOf(list)
-                ? lens.Set(source, list.SetItem(index, value))
-                : source
+        return lens.AtKey(
+            getter: static (list, index) => list.GetItem(index),
+            setter: static (list, index, value) => list.SetItem(index, value),
+            key: index
         );
     }
 
@@ -181,13 +202,23 @@ public static class LensExtensions
         int index
     )
     {
-        return OptionLens<T, TValue>.Of(
-            getter: source => lens.Get(source) is var array && index.IsWithinBoundsOf(array)
-                ? Some(array[index])
-                : None<TValue>(),
-            setter: (source, value) => lens.Get(source) is var array && index.IsWithinBoundsOf(array)
-                ? lens.Set(source, array.SetItem(index, value))
-                : source
+        return lens.AtKey(
+            getter: static (array, index) => array.GetItem(index),
+            setter: static (array, index, value) => array.SetItem(index, value),
+            key: index
+        );
+    }
+
+    public static OptionLens<T, TKeyedValue> AtKey<T, TValue, TKey, TKeyedValue>(
+        this Lens<T, TValue> lens,
+        Func<TValue, TKey, Option<TKeyedValue>> getter,
+        Func<TValue, TKey, TKeyedValue, TValue> setter,
+        TKey key
+    ) where TKey : notnull
+    {
+        return OptionLens<T, TKeyedValue>.Of(
+            getter: source => getter(lens.Get(source), key),
+            setter: (source, value) => lens.Set(source, setter(lens.Get(source), key, value))
         );
     }
 

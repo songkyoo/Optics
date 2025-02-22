@@ -23,6 +23,13 @@ public readonly struct Option<T>
     }
     #endregion
 
+    #region Overrides
+    public override string ToString()
+    {
+        return IsSome ? $"Some({_value})" : "None";
+    }
+    #endregion
+
     #region Methods
     public T GetOrElse(in T value)
     {

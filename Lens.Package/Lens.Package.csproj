@@ -11,8 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="..\Lens\bin\Release\netstandard2.0\Lens.dll" Pack="true" PackagePath="lib/netstandard2.0/" />
-    <None Include="..\Lens.Generator\bin\Release\netstandard2.0\Lens.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+    <PackageReference Include="Macaron.Optics.Core" Version="1.0.0" />
+    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.0" />
   </ItemGroup>
 
 </Project>

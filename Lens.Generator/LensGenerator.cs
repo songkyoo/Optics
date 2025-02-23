@@ -10,11 +10,11 @@ namespace Macaron.Optics.Generator;
 public class LensGenerator : IIncrementalGenerator
 {
     #region Static
-    private const string LensClassName = "global::Macaron.Optics.Lens";
-    private const string LensOfClassName = "global::Macaron.Optics.LensOf";
-    private const string OptionLensClassName = "global::Macaron.Optics.OptionLens";
-    private const string OptionLensOfClassName = "global::Macaron.Optics.OptionLensOf";
-    private const string OptionClassName = "global::Macaron.Optics.Option";
+    private const string LensTypeName = "global::Macaron.Optics.Lens";
+    private const string LensOfTypeName = "global::Macaron.Optics.LensOf";
+    private const string OptionLensTypeName = "global::Macaron.Optics.OptionLens";
+    private const string OptionLensOfTypeName = "global::Macaron.Optics.OptionLensOf";
+    private const string MaybeTypeName = "global::Macaron.Functional.Maybe";
 
     private static string? ToFullyQualifiedName(ISymbol? symbol)
     {
@@ -32,7 +32,7 @@ public class LensGenerator : IIncrementalGenerator
         var methodSymbol = generatorSyntaxContext.SemanticModel
             .GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
         if (methodSymbol?.IsStatic is not true ||
-            ToFullyQualifiedName(methodSymbol.ContainingType) is not LensClassName or OptionLensClassName
+            ToFullyQualifiedName(methodSymbol.ContainingType) is not LensTypeName or OptionLensTypeName
         )
         {
             return null;
@@ -144,11 +144,11 @@ public class LensGenerator : IIncrementalGenerator
                     : ((IFieldSymbol)member).Type
                 );
 
-                lensOfStringBuilder.AppendLine($"        public static {LensClassName}<{typeName}, {memberTypeName}> {member.Name}(");
-                lensOfStringBuilder.AppendLine($"            this {LensOfClassName}<{typeName}> lensOf");
+                lensOfStringBuilder.AppendLine($"        public static {LensTypeName}<{typeName}, {memberTypeName}> {member.Name}(");
+                lensOfStringBuilder.AppendLine($"            this {LensOfTypeName}<{typeName}> lensOf");
                 lensOfStringBuilder.AppendLine("        )");
                 lensOfStringBuilder.AppendLine("        {");
-                lensOfStringBuilder.AppendLine($"            return {LensClassName}<{typeName}, {memberTypeName}>.Of(");
+                lensOfStringBuilder.AppendLine($"            return {LensTypeName}<{typeName}, {memberTypeName}>.Of(");
                 lensOfStringBuilder.AppendLine($"                getter: static source => source.{member.Name},");
                 lensOfStringBuilder.AppendLine($"                setter: static (source, value) => source with");
                 lensOfStringBuilder.AppendLine("                {");
@@ -157,18 +157,18 @@ public class LensGenerator : IIncrementalGenerator
                 lensOfStringBuilder.AppendLine("            );");
                 lensOfStringBuilder.AppendLine("        }");
 
-                optionLensOfStringBuilder.AppendLine($"        public static {OptionLensClassName}<{OptionClassName}<{typeName}>, {memberTypeName}> {member.Name}(");
-                optionLensOfStringBuilder.AppendLine($"            this {OptionLensOfClassName}<{typeName}> optionLensOf");
+                optionLensOfStringBuilder.AppendLine($"        public static {OptionLensTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {member.Name}(");
+                optionLensOfStringBuilder.AppendLine($"            this {OptionLensOfTypeName}<{typeName}> optionLensOf");
                 optionLensOfStringBuilder.AppendLine("        )");
                 optionLensOfStringBuilder.AppendLine("        {");
-                optionLensOfStringBuilder.AppendLine($"            return {OptionLensClassName}<{OptionClassName}<{typeName}>, {memberTypeName}>.Of(");
-                optionLensOfStringBuilder.AppendLine($"                getter: static source => source.IsSome ? {OptionClassName}.Some(source.Value.{member.Name}) : {OptionClassName}.None<{memberTypeName}>(),");
-                optionLensOfStringBuilder.AppendLine($"                setter: static (source, value) => source.IsSome");
-                optionLensOfStringBuilder.AppendLine($"                    ? {OptionClassName}.Some(source.Value with");
+                optionLensOfStringBuilder.AppendLine($"            return {OptionLensTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(");
+                optionLensOfStringBuilder.AppendLine($"                getter: static source => source.IsJust ? {MaybeTypeName}.Just(source.Value.{member.Name}) : {MaybeTypeName}.Nothing<{memberTypeName}>(),");
+                optionLensOfStringBuilder.AppendLine($"                setter: static (source, value) => source.IsJust");
+                optionLensOfStringBuilder.AppendLine($"                    ? {MaybeTypeName}.Just(source.Value with");
                 optionLensOfStringBuilder.AppendLine("                    {");
                 optionLensOfStringBuilder.AppendLine($"                        {member.Name} = value,");
                 optionLensOfStringBuilder.AppendLine("                    })");
-                optionLensOfStringBuilder.AppendLine($"                    : {OptionClassName}.None<{typeName}>()");
+                optionLensOfStringBuilder.AppendLine($"                    : {MaybeTypeName}.Nothing<{typeName}>()");
                 optionLensOfStringBuilder.AppendLine("            );");
                 optionLensOfStringBuilder.AppendLine("        }");
 

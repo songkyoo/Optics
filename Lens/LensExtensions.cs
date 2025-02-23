@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
+using Macaron.Functional;
 
-using static Macaron.Optics.Option;
+using static Macaron.Functional.Maybe;
 
 namespace Macaron.Optics;
 
@@ -59,18 +60,18 @@ public static class LensExtensions
     /// <param name="source">대상 인스턴스.</param>
     /// <param name="update">기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>
-    /// <paramref name="update"/> 함수가 반환한 <see cref="Option{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
+    /// <paramref name="update"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
     /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
     /// </returns>
     public static T Update<T, TValue>(
         this OptionLens<T, TValue> optionLens,
         T source,
-        Func<Option<TValue>, Option<TValue>> update
+        Func<Maybe<TValue>, Maybe<TValue>> update
     )
     {
         var value = optionLens.Get(source);
         var newValue = update(value);
-        var newSource = newValue.IsSome ? optionLens.Set(source, newValue.Value) : source;
+        var newSource = newValue.IsJust ? optionLens.Set(source, newValue.Value) : source;
 
         return newSource;
     }
@@ -84,18 +85,18 @@ public static class LensExtensions
     /// <param name="source">대상 인스턴스.</param>
     /// <param name="update">대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>
-    /// <paramref name="update"/> 함수가 반환한 <see cref="Option{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
+    /// <paramref name="update"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
     /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
     /// </returns>
     public static T Update<T, TValue>(
         this OptionLens<T, TValue> optionLens,
         T source,
-        Func<T, Option<TValue>, Option<TValue>> update
+        Func<T, Maybe<TValue>, Maybe<TValue>> update
     )
     {
         var value = optionLens.Get(source);
         var newValue = update(source, value);
-        var newSource = newValue.IsSome ? optionLens.Set(source, newValue.Value) : source;
+        var newSource = newValue.IsJust ? optionLens.Set(source, newValue.Value) : source;
 
         return newSource;
     }
@@ -205,7 +206,7 @@ public static class LensExtensions
             {
                 var value0 = source;
                 var value1 = optionLens1.Get(value0);
-                var value2 = value1.IsSome ? optionLens2.Get(value1.Value) : None<TValue2>();
+                var value2 = value1.IsJust ? optionLens2.Get(value1.Value) : Nothing<TValue2>();
 
                 return value2;
             },
@@ -214,8 +215,8 @@ public static class LensExtensions
                 var value0 = source;
                 var value1 = optionLens1.Get(value0);
 
-                var newValue1 = value1.IsSome ? Some(optionLens2.Set(value1.Value, value)) : None<TValue1>();
-                var newValue0 = newValue1.IsSome ? optionLens1.Set(source, newValue1.Value) : source;
+                var newValue1 = value1.IsJust ? Just(optionLens2.Set(value1.Value, value)) : Nothing<TValue1>();
+                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value) : source;
 
                 return newValue0;
             }
@@ -224,7 +225,7 @@ public static class LensExtensions
 
     /// <summary>
     /// 두 개의 <see cref="OptionLens{T, TValue}"/> 인스턴스를 연결하여 하나의 <see cref="OptionLens{T, TValue}"/>로 만든다.
-    /// 두 번째 인스턴스가 <see cref="Option{TValue1}"/>을 대상으로 하는 경우를 처리하며 생성된 인스턴스는
+    /// 두 번째 인스턴스가 <see cref="Maybe{TValue1}"/>을 대상으로 하는 경우를 처리하며 생성된 인스턴스는
     /// <see cref="OptionLens{T, TValue}.Get"/> 호출 결과에 값이 없는 경우 <see cref="OptionLens{T, TValue}.Set"/> 호출 시
     /// 전달된 대상 인스턴스를 그대로 반환한다.
     /// </summary>
@@ -241,7 +242,7 @@ public static class LensExtensions
     /// </returns>
     public static OptionLens<T, TValue2> Chain<T, TValue1, TValue2>(
         this OptionLens<T, TValue1> optionLens1,
-        OptionLens<Option<TValue1>, TValue2> optionLens2
+        OptionLens<Maybe<TValue1>, TValue2> optionLens2
     )
     {
         return OptionLens<T, TValue2>.Of(
@@ -259,7 +260,7 @@ public static class LensExtensions
                 var value1 = optionLens1.Get(value0);
 
                 var newValue1 = optionLens2.Set(value1, value);
-                var newValue0 = newValue1.IsSome ? optionLens1.Set(source, newValue1.Value): source;
+                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value): source;
 
                 return newValue0;
             }
@@ -268,7 +269,7 @@ public static class LensExtensions
 
     /// <summary>
     /// 두 개의 <see cref="OptionLens{T, TValue}"/> 인스턴스를 연결하여 하나의 <see cref="OptionLens{T, TValue}"/>로 만든다.
-    /// 두 인스턴스의 대상 타입이 <see cref="Option{T}"/>인 경우를 처리하며 생성된 인스턴스는
+    /// 두 인스턴스의 대상 타입이 <see cref="Maybe{T}"/>인 경우를 처리하며 생성된 인스턴스는
     /// <see cref="OptionLens{T, TValue}.Get"/> 호출 결과에 값이 없는 경우 <see cref="OptionLens{T, TValue}.Set"/> 호출 시
     /// 전달된 대상 인스턴스를 그대로 반환한다.
     /// </summary>
@@ -283,12 +284,12 @@ public static class LensExtensions
     /// <returns>
     /// 두 <see cref="OptionLens{T, TValue}"/>를 연결하여 생성된 <c>OptionLens&lt;Option&lt;T&gt;, TValue2&gt;</c> 인스턴스.
     /// </returns>
-    public static OptionLens<Option<T>, TValue2> Chain<T, TValue1, TValue2>(
-        this OptionLens<Option<T>, TValue1> optionLens1,
-        OptionLens<Option<TValue1>, TValue2> optionLens2
+    public static OptionLens<Maybe<T>, TValue2> Chain<T, TValue1, TValue2>(
+        this OptionLens<Maybe<T>, TValue1> optionLens1,
+        OptionLens<Maybe<TValue1>, TValue2> optionLens2
     )
     {
-        return OptionLens<Option<T>, TValue2>.Of(
+        return OptionLens<Maybe<T>, TValue2>.Of(
             getter: source =>
             {
                 var value0 = source;
@@ -303,7 +304,7 @@ public static class LensExtensions
                 var value1 = optionLens1.Get(value0);
 
                 var newValue1 = optionLens2.Set(value1, value);
-                var newValue0 = newValue1.IsSome ? optionLens1.Set(source, newValue1.Value): source;
+                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value): source;
 
                 return newValue0;
             }
@@ -366,7 +367,7 @@ public static class LensExtensions
     public static OptionLens<T, TValue> ToOptionLens<T, TValue>(this Lens<T, TValue> lens)
     {
         return OptionLens<T, TValue>.Of(
-            getter: source => Some(lens.Get(source)),
+            getter: source => Just(lens.Get(source)),
             setter: (source, value) => lens.Set(source, value)
         );
     }
@@ -388,7 +389,7 @@ public static class LensExtensions
     {
         return Lens<T, TValue>.Of(
             getter: source => optionLens.Get(source).GetOrElse(getDefaultValue(source)),
-            setter: (source, value) => optionLens.Get(source) is { IsSome: true } val
+            setter: (source, value) => optionLens.Get(source) is { IsJust: true } val
                 ? optionLens.Set(source, val.Value)
                 : source
         );
@@ -444,7 +445,7 @@ public static class LensExtensions
 
     public static OptionLens<T, TKeyedValue> AtKey<T, TValue, TKey, TKeyedValue>(
         this Lens<T, TValue> lens,
-        Func<TValue, TKey, Option<TKeyedValue>> getter,
+        Func<TValue, TKey, Maybe<TKeyedValue>> getter,
         Func<TValue, TKey, TKeyedValue, TValue> setter,
         TKey key
     ) where TKey : notnull
@@ -460,7 +461,7 @@ public static class LensExtensions
     )
     {
         return Lens<T, TValue>.Of(
-            getter: source => lens.Get(source) is { IsSome: true } option ? option.Value : getDefaultValue(source),
+            getter: source => lens.Get(source) is { IsJust: true } option ? option.Value : getDefaultValue(source),
             setter: (source, value) => lens.Set(source, value)
         );
     }
@@ -468,26 +469,26 @@ public static class LensExtensions
 
 file static class FileScopeExtensions
 {
-    public static Option<TValue> GetItem<TKey, TValue>(this ImmutableDictionary<TKey, TValue> dict, TKey key)
+    public static Maybe<TValue> GetItem<TKey, TValue>(this ImmutableDictionary<TKey, TValue> dict, TKey key)
         where TKey : notnull
     {
-        return dict.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+        return dict.TryGetValue(key, out var value) ? Just(value) : Nothing<TValue>();
     }
 
-    public static Option<TValue> GetItem<TKey, TValue>(this ImmutableSortedDictionary<TKey, TValue> dict, TKey key)
+    public static Maybe<TValue> GetItem<TKey, TValue>(this ImmutableSortedDictionary<TKey, TValue> dict, TKey key)
         where TKey : notnull
     {
-        return dict.TryGetValue(key, out var value) ? Some(value) : None<TValue>();
+        return dict.TryGetValue(key, out var value) ? Just(value) : Nothing<TValue>();
     }
 
-    public static Option<T> GetItem<T>(this ImmutableList<T> list, int index)
+    public static Maybe<T> GetItem<T>(this ImmutableList<T> list, int index)
     {
-        return index.IsWithinBoundsOf(list) ? Some(list[index]) : None<T>();
+        return index.IsWithinBoundsOf(list) ? Just(list[index]) : Nothing<T>();
     }
 
-    public static Option<T> GetItem<T>(this ImmutableArray<T> array, int index)
+    public static Maybe<T> GetItem<T>(this ImmutableArray<T> array, int index)
     {
-        return index.IsWithinBoundsOf(array) ? Some(array[index]) : None<T>();
+        return index.IsWithinBoundsOf(array) ? Just(array[index]) : Nothing<T>();
     }
 
     public static bool IsWithinBoundsOf<T>(this int value, IReadOnlyList<T> list)

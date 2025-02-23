@@ -6,7 +6,7 @@ public static class OptionLens
     /// <see cref="OptionLensOf{T}"/> 인스턴스를 생성한다.
     /// </summary>
     /// <typeparam name="T">
-    /// <see cref="OptionLens{T, TValue}"/>가 사용할 타입. 실제 생성된 OptionLens에서는 <see cref="Option{T}"/>로 치환된다.
+    /// <see cref="OptionLens{T, TValue}"/>가 사용할 타입. 실제 생성된 OptionLens에서는 <see cref="Maybe{T}"/>로 치환된다.
     /// </typeparam>
     /// <returns><see cref="OptionLensOf{T}"/> 인스턴스.</returns>
     /// <remarks>

@@ -10,20 +10,20 @@ namespace Macaron.Optics;
 /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 값을 획득하거나 설정할 멤버의 타입.</typeparam>
 /// <param name="Get">값을 획득하는 함수.</param>
 /// <param name="Set">값을 설정하는 함수.</param>
-public readonly record struct OptionLens<T, TValue>(
+public readonly record struct Optional<T, TValue>(
     Func<T, Maybe<TValue>> Get,
     Func<T, TValue, T> Set
 )
 {
     #region Static
     /// <summary>
-    /// 지정된 <paramref name="getter"/>와 <paramref name="setter"/>로 <see cref="OptionLens{T, TValue}"/> 인스턴스를
+    /// 지정된 <paramref name="getter"/>와 <paramref name="setter"/>로 <see cref="Optional{T,TValue}"/> 인스턴스를
     /// 생성한다.
     /// </summary>
     /// <param name="getter">값을 획득하는 함수.</param>
     /// <param name="setter">값을 설정하는 함수.</param>
-    /// <returns><see cref="OptionLens{T, TValue}"/> 인스턴스.</returns>
-    public static OptionLens<T, TValue> Of(Func<T, Maybe<TValue>> getter, Func<T, TValue, T> setter)
+    /// <returns><see cref="Optional{T,TValue}"/> 인스턴스.</returns>
+    public static Optional<T, TValue> Of(Func<T, Maybe<TValue>> getter, Func<T, TValue, T> setter)
         => new(getter, setter);
     #endregion
 }

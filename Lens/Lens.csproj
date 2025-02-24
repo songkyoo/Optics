@@ -27,7 +27,7 @@
   
   <Target Name="TransformT4TextTemplates" BeforeTargets="BeforeBuild">
     <Exec Command="dotnet tool restore" />
-    <Exec Command="dotnet t4 Lens.Combine.tt -p:MaxCount=8" />
+    <Exec Command="dotnet t4 Lens.Compose.tt -p:MaxCount=8" />
   </Target>
 
 </Project>

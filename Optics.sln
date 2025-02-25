@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens", "Lens\Lens.csproj", "{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Optics.Core", "Optics.Core\Optics.Core.csproj", "{BB392A44-8DC4-4173-AFFA-6ABDBFE345A8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Generator", "Lens.Generator\Lens.Generator.csproj", "{6A630302-C420-46FF-AD47-55CED2FC395C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Optics.Generator", "Optics.Generator\Optics.Generator.csproj", "{6A630302-C420-46FF-AD47-55CED2FC395C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Tests", "Lens.Tests\Lens.Tests.csproj", "{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Optics.Tests", "Optics.Tests\Optics.Tests.csproj", "{A1942DD1-9D7D-4722-9CE5-F972FBCAE2D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lens.Package", "Lens.Package\Lens.Package.csproj", "{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Optics.Package", "Optics.Package\Optics.Package.csproj", "{D3F109D2-7F01-4F1F-AC46-715A1D7DCE2E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

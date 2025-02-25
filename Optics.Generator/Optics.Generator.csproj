@@ -34,7 +34,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Optics\Optics.Core.csproj" />
+    <ProjectReference Include="..\Optics.Core\Optics.Core.csproj" />
   </ItemGroup>
 
 </Project>

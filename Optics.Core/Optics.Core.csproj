@@ -10,7 +10,7 @@
   <PropertyGroup>
     <PackageId>Macaron.Optics.Core</PackageId>
     <Version>1.0.0</Version>
-    <Authors>Song, Gyu</Authors>
+    <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/songkyoo/Optics</RepositoryUrl>
   </PropertyGroup>

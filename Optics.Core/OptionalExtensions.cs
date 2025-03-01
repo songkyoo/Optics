@@ -14,6 +14,39 @@ public static class OptionalExtensions
     /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
     /// <param name="fn">
+    /// 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의 <see cref="Optional{T,TValue}.Get"/> 호출의
+    /// 결과가 값을 가지고 있지 않다면 호출되지 않는다.
+    /// </param>
+    /// <returns>
+    /// <paramref name="fn"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
+    /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
+    /// </returns>
+    public static T Modify<T, TValue>(this Optional<T, TValue> optional, T source, Func<TValue, Maybe<TValue>> fn)
+    {
+        var value = optional.Get(source);
+        if (value.IsNothing)
+        {
+            return source;
+        }
+
+        var newValue = fn(value.Value);
+        if (newValue.IsNothing)
+        {
+            return source;
+        }
+
+        var newSource = optional.Set(source, newValue.Value);
+        return newSource;
+    }
+
+    /// <summary>
+    /// <see cref="Optional{T,TValue}"/> 인스턴스를 사용하여 대상 인스턴스의 값을 읽고 그 값을 사용하여 새로운 인스턴스를 생성한다.
+    /// </summary>
+    /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
+    /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
+    /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
+    /// <param name="source">대상 인스턴스.</param>
+    /// <param name="fn">
     /// 대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의
     /// <see cref="Optional{T,TValue}.Get"/> 호출의 결과가 값을 가지고 있지 않다면 호출되지 않는다.
     /// </param>
@@ -39,24 +72,50 @@ public static class OptionalExtensions
         return newSource;
     }
 
-    /// <summary>
-    /// <see cref="Optional{T,TValue}"/> 인스턴스를 사용하여 대상 인스턴스의 값을 읽고 그 값을 사용하여 새로운 인스턴스를 생성한다.
-    /// </summary>
-    /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
-    /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
-    /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
-    /// <param name="source">대상 인스턴스.</param>
-    /// <param name="fn">
-    /// 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의 <see cref="Optional{T,TValue}.Get"/> 호출의
-    /// 결과가 값을 가지고 있지 않다면 호출되지 않는다.
-    /// </param>
-    /// <returns>
-    /// <paramref name="fn"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
-    /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
-    /// </returns>
-    public static T Modify<T, TValue>(this Optional<T, TValue> optional, T source, Func<TValue, Maybe<TValue>> fn)
+    public static T Modify<T, TValue, TContext>(
+        this Optional<T, TValue> optional,
+        TContext context,
+        T source,
+        Func<TContext, TValue, Maybe<TValue>> fn
+    )
     {
-        return optional.Modify(source, fn: (_, value) => fn(value));
+        var value = optional.Get(source);
+        if (value.IsNothing)
+        {
+            return source;
+        }
+
+        var newValue = fn(context, value.Value);
+        if (newValue.IsNothing)
+        {
+            return source;
+        }
+
+        var newSource = optional.Set(source, newValue.Value);
+        return newSource;
+    }
+
+    public static T Modify<T, TValue, TContext>(
+        this Optional<T, TValue> optional,
+        TContext context,
+        T source,
+        Func<TContext, T, TValue, Maybe<TValue>> fn
+    )
+    {
+        var value = optional.Get(source);
+        if (value.IsNothing)
+        {
+            return source;
+        }
+
+        var newValue = fn(context, source, value.Value);
+        if (newValue.IsNothing)
+        {
+            return source;
+        }
+
+        var newSource = optional.Set(source, newValue.Value);
+        return newSource;
     }
 
     /// <summary>

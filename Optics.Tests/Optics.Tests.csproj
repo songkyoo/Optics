@@ -4,6 +4,7 @@
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
+    <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <TargetFramework>net9.0</TargetFramework>
   </PropertyGroup>

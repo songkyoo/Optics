@@ -250,7 +250,8 @@ public static class OptionalExtensions
 
     /// <summary>
     /// <see cref="Optional{T,TValue}"/> 인스턴스와 <see cref="Lens{T,TValue}"/> 인스턴스를 연결하여 하나의
-    /// <see cref="Optional{T,TValue}"/>로 만든다.
+    /// <see cref="Lens{T,TValue}"/>로 만든다. 생성된 <see cref="Lens{T,TValue}"/> 인스턴스에 값을 설정할 때
+    //  <paramref name="optional"/>이 반환한 결과에 값이 없는 경우 대상 인스턴스를 그대로 반환한다.
     /// </summary>
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
@@ -277,7 +278,7 @@ public static class OptionalExtensions
             {
                 var value0 = source;
                 var value1 = optional.Get(value0);
-                var value2 = lens.Get(value1.GetOrElse(getDefaultValue(source)));
+                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue(source));
 
                 return value2;
             },
@@ -286,8 +287,112 @@ public static class OptionalExtensions
                 var value0 = source;
                 var value1 = optional.Get(value0);
 
-                var newValue1 = lens.Set(value1.GetOrElse(getDefaultValue(value0)), value);
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
                 var newValue0 = optional.Set(source, newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Lens<TValue1, TValue2> lens,
+        Func<TValue1> getDefaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(value0);
+                var value2 = lens.Get(value1.GetOrElse(getDefaultValue()));
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(value0);
+
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
+                var newValue0 = optional.Set(source, newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<Maybe<T>, TValue1> optional,
+        Lens<TValue1, TValue2> lens,
+        Func<T, TValue1> getDefaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue(source));
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
+                var newValue0 = optional.Set(Just(source), newValue1).Value; // optional.Set이 Just를 반환한다고 가정한다.
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<Maybe<T>, TValue1> optional,
+        Lens<TValue1, TValue2> lens,
+        Func<TValue1> getDefaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue());
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
+                var newValue0 = optional.Set(Just(source), newValue1).Value; // optional.Set이 Just를 반환한다고 가정한다.
 
                 return newValue0;
             }
@@ -307,10 +412,8 @@ public static class OptionalExtensions
     public static Lens<T, TValue> ToLens<T, TValue>(this Optional<T, TValue> optional, Func<T, TValue> getDefaultValue)
     {
         return Lens<T, TValue>.Of(
-            getter: source => optional.Get(source).GetOrElse(getDefaultValue(source)),
-            setter: (source, value) => optional.Get(source) is { IsJust: true } val
-                ? optional.Set(source, val.Value)
-                : source
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source),
+            setter: optional.Set
         );
     }
 
@@ -327,8 +430,8 @@ public static class OptionalExtensions
     public static Lens<T, TValue> ToLens<T, TValue>(this Optional<T, TValue> optional, Func<TValue> getDefaultValue)
     {
         return Lens<T, TValue>.Of(
-            getter: source => lens.Get(source) is { IsJust: true } option ? option.Value : getDefaultValue(source),
-            setter: (source, value) => lens.Set(source, value)
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),
+            setter: optional.Set
         );
     }
 }

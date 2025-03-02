@@ -1,4 +1,4 @@
-﻿using System.Collections.Immutable;
+using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -9,11 +9,11 @@ using static Macaron.Optics.Generator.Helper;
 namespace Macaron.Optics.Generator;
 
 [Generator]
-public class LensGenerator : IIncrementalGenerator
+public class OptionalGenerator : IIncrementalGenerator
 {
     #region Static
-    private const string LensTypeName = "global::Macaron.Optics.Lens";
-    private const string LensOfTypeName = "global::Macaron.Optics.LensOf";
+    private const string OptionalTypeName = "global::Macaron.Optics.Optional";
+    private const string OptionalOfTypeName = "global::Macaron.Optics.OptionalOf";
 
     private static void GenerateSource(
         SourceProductionContext sourceProductionContext,
@@ -26,10 +26,10 @@ public class LensGenerator : IIncrementalGenerator
             return;
         }
 
-        var lensOfStringBuilder = new StringBuilder();
+        var optionalOfStringBuilder = new StringBuilder();
 
-        lensOfStringBuilder.AppendLine($"public static class LensOfExtensions");
-        lensOfStringBuilder.AppendLine("{");
+        optionalOfStringBuilder.AppendLine($"public static class OptionalOfExtensions");
+        optionalOfStringBuilder.AppendLine("{");
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
         {
@@ -56,29 +56,31 @@ public class LensGenerator : IIncrementalGenerator
                     : ((IFieldSymbol)member).Type
                 );
 
-                lensOfStringBuilder.AppendLine($"   public static {LensTypeName}<{typeName}, {memberTypeName}> {member.Name}(");
-                lensOfStringBuilder.AppendLine($"       this {LensOfTypeName}<{typeName}> lensOf");
-                lensOfStringBuilder.AppendLine("   )");
-                lensOfStringBuilder.AppendLine("   {");
-                lensOfStringBuilder.AppendLine($"       return {LensTypeName}<{typeName}, {memberTypeName}>.Of(");
-                lensOfStringBuilder.AppendLine($"           getter: static source => source.{member.Name},");
-                lensOfStringBuilder.AppendLine($"           setter: static (source, value) => source with");
-                lensOfStringBuilder.AppendLine("           {");
-                lensOfStringBuilder.AppendLine($"               {member.Name} = value,");
-                lensOfStringBuilder.AppendLine("           }");
-                lensOfStringBuilder.AppendLine("       );");
-                lensOfStringBuilder.AppendLine("   }");
+                optionalOfStringBuilder.AppendLine($"    public static {OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {member.Name}(");
+                optionalOfStringBuilder.AppendLine($"        this {OptionalOfTypeName}<{typeName}> optionLensOf");
+                optionalOfStringBuilder.AppendLine("    )");
+                optionalOfStringBuilder.AppendLine("    {");
+                optionalOfStringBuilder.AppendLine($"        return {OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(");
+                optionalOfStringBuilder.AppendLine($"            getter: static source => source.IsJust ? {MaybeTypeName}.Just(source.Value.{member.Name}) : {MaybeTypeName}.Nothing<{memberTypeName}>(),");
+                optionalOfStringBuilder.AppendLine($"            setter: static (source, value) => source.IsJust");
+                optionalOfStringBuilder.AppendLine($"                ? {MaybeTypeName}.Just(source.Value with");
+                optionalOfStringBuilder.AppendLine("                {");
+                optionalOfStringBuilder.AppendLine($"                    {member.Name} = value,");
+                optionalOfStringBuilder.AppendLine("                })");
+                optionalOfStringBuilder.AppendLine($"                : {MaybeTypeName}.Nothing<{typeName}>()");
+                optionalOfStringBuilder.AppendLine("        );");
+                optionalOfStringBuilder.AppendLine("    }");
 
                 if (i < uniqueTypeSymbols.Length - 1)
                 {
-                    lensOfStringBuilder.AppendLine();
+                    optionalOfStringBuilder.AppendLine();
                 }
             }
         }
 
-        lensOfStringBuilder.AppendLine("}");
+        optionalOfStringBuilder.AppendLine("}");
 
-        AddSource(sourceProductionContext, "LensOfExtensions.g.cs", lensOfStringBuilder.ToString());
+        AddSource(sourceProductionContext, "OptionalOfExtensions.g.cs", optionalOfStringBuilder.ToString());
 
         #region Local Functions
         static void AddSource(SourceProductionContext sourceProductionContext, string hintName, string sourceText)
@@ -102,17 +104,17 @@ public class LensGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var lensOfCalls = context.SyntaxProvider
+        var optionalOfCalls = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is InvocationExpressionSyntax,
-                transform: static (generatorSyntaxContext, _) => GetLensOfType(generatorSyntaxContext, LensTypeName)
+                transform: static (generatorSyntaxContext, _) => GetLensOfType(generatorSyntaxContext, OptionalTypeName)
             )
             .Where(static typeName => typeName is not null)
             .Select(static (typeName, _) => typeName!)
             .Collect();
 
         context.RegisterSourceOutput(
-            source: lensOfCalls,
+            source: optionalOfCalls,
             action: GenerateSource
         );
     }

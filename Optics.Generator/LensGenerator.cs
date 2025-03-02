@@ -49,8 +49,9 @@ public class LensGenerator : IIncrementalGenerator
 
             var typeName = ToFullyQualifiedName(typeSymbol)!;
 
-            foreach (var member in members)
+            for (int j = 0; j < members.Length; ++j)
             {
+                var member = members[j];
                 var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
                     ? propertySymbol.Type
                     : ((IFieldSymbol)member).Type
@@ -69,10 +70,15 @@ public class LensGenerator : IIncrementalGenerator
                 lensOfStringBuilder.AppendLine("       );");
                 lensOfStringBuilder.AppendLine("   }");
 
-                if (i < uniqueTypeSymbols.Length - 1)
+                if (j < members.Length - 1)
                 {
                     lensOfStringBuilder.AppendLine();
                 }
+            }
+
+            if (i < uniqueTypeSymbols.Length - 1)
+            {
+                lensOfStringBuilder.AppendLine();
             }
         }
 

@@ -43,7 +43,12 @@ public static class LensExtensions
         return newSource;
     }
 
-    public static T Modify<T, TValue, TContext>(this Lens<T, TValue> lens, TContext context, T source, Func<TContext, TValue, TValue> fn)
+    public static T Modify<T, TValue, TContext>(
+        this Lens<T, TValue> lens,
+        TContext context,
+        T source,
+        Func<TContext, TValue, TValue> fn
+    )
     {
         var value = lens.Get(source);
         var newValue = fn(context, value);
@@ -52,7 +57,12 @@ public static class LensExtensions
         return newSource;
     }
 
-    public static T Modify<T, TValue, TContext>(this Lens<T, TValue> lens, TContext context, T source, Func<TContext, T, TValue, TValue> fn)
+    public static T Modify<T, TValue, TContext>(
+        this Lens<T, TValue> lens,
+        TContext context,
+        T source,
+        Func<TContext, T, TValue, TValue> fn
+    )
     {
         var value = lens.Get(source);
         var newValue = fn(context, source, value);

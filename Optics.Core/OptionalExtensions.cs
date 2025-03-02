@@ -326,19 +326,9 @@ public static class OptionalExtensions
     /// <returns><see cref="Lens{T,TValue}"/> 인스턴스.</returns>
     public static Lens<T, TValue> ToLens<T, TValue>(this Optional<T, TValue> optional, Func<TValue> getDefaultValue)
     {
-        return optional.ToLens(_ => getDefaultValue());
-    }
-
-    public static Lens<T, TValue> OrElse<T, TValue>(this Optional<T, TValue> lens, Func<T, TValue> getDefaultValue)
-    {
         return Lens<T, TValue>.Of(
             getter: source => lens.Get(source) is { IsJust: true } option ? option.Value : getDefaultValue(source),
             setter: (source, value) => lens.Set(source, value)
         );
-    }
-
-    public static Lens<T, TValue> OrElse<T, TValue>(this Optional<T, TValue> lens, Func<TValue> getDefaultValue)
-    {
-        return lens.OrElse(_ => getDefaultValue());
     }
 }

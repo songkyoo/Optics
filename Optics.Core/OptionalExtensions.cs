@@ -126,34 +126,34 @@ public static class OptionalExtensions
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
     /// <typeparam name="TValue2"><typeparamref name="TValue1"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
-    /// <param name="optionLens1"><c>Optional&lt;T, TValue1&gt;</c> 인스턴스.</param>
-    /// <param name="optionLens2">
+    /// <param name="optional1"><c>Optional&lt;T, TValue1&gt;</c> 인스턴스.</param>
+    /// <param name="optional2">
     /// 첫 번째 <see cref="Optional{T,TValue}"/>와 연결될 <c>Optional&lt;TValue1, TValue2&gt;</c> 인스턴스.
     /// </param>
     /// <returns>
     /// 두 <see cref="Optional{T,TValue}"/>를 연결하여 생성된 <c>Optional&lt;T, TValue2&gt;</c> 인스턴스.
     /// </returns>
     public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Optional<T, TValue1> optionLens1,
-        Optional<TValue1, TValue2> optionLens2
+        this Optional<T, TValue1> optional1,
+        Optional<TValue1, TValue2> optional2
     )
     {
         return Optional<T, TValue2>.Of(
             getter: source =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
-                var value2 = value1.IsJust ? optionLens2.Get(value1.Value) : Nothing<TValue2>();
+                var value1 = optional1.Get(value0);
+                var value2 = value1.IsJust ? optional2.Get(value1.Value) : Nothing<TValue2>();
 
                 return value2;
             },
             setter: (source, value) =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
+                var value1 = optional1.Get(value0);
 
-                var newValue1 = value1.IsJust ? Just(optionLens2.Set(value1.Value, value)) : Nothing<TValue1>();
-                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value) : source;
+                var newValue1 = value1.IsJust ? Just(optional2.Set(value1.Value, value)) : Nothing<TValue1>();
+                var newValue0 = newValue1.IsJust ? optional1.Set(source, newValue1.Value) : source;
 
                 return newValue0;
             }
@@ -169,8 +169,8 @@ public static class OptionalExtensions
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
     /// <typeparam name="TValue2"><typeparamref name="TValue1"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
-    /// <param name="optionLens1"><c>Optional&lt;T, TValue1&gt;</c> 인스턴스.</param>
-    /// <param name="optionLens2">
+    /// <param name="optional1"><c>Optional&lt;T, TValue1&gt;</c> 인스턴스.</param>
+    /// <param name="optional2">
     /// 첫 번째 <see cref="Optional{T,TValue}"/>와 연결될 <c>Optional&lt;Option&lt;TValue1&gt;, TValue2&gt;</c>
     /// 인스턴스.
     /// </param>
@@ -178,26 +178,26 @@ public static class OptionalExtensions
     /// 두 <see cref="Optional{T,TValue}"/>를 연결하여 생성된 <c>Optional&lt;T, TValue2&gt;</c> 인스턴스.
     /// </returns>
     public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Optional<T, TValue1> optionLens1,
-        Optional<Maybe<TValue1>, TValue2> optionLens2
+        this Optional<T, TValue1> optional1,
+        Optional<Maybe<TValue1>, TValue2> optional2
     )
     {
         return Optional<T, TValue2>.Of(
             getter: source =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
-                var value2 = optionLens2.Get(value1);
+                var value1 = optional1.Get(value0);
+                var value2 = optional2.Get(value1);
 
                 return value2;
             },
             setter: (source, value) =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
+                var value1 = optional1.Get(value0);
 
-                var newValue1 = optionLens2.Set(value1, value);
-                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value): source;
+                var newValue1 = optional2.Set(value1, value);
+                var newValue0 = newValue1.IsJust ? optional1.Set(source, newValue1.Value): source;
 
                 return newValue0;
             }
@@ -213,8 +213,8 @@ public static class OptionalExtensions
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
     /// <typeparam name="TValue2"><typeparamref name="TValue1"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
-    /// <param name="optionLens1"><c>Optional&lt;Option&lt;T&gt;, TValue1&gt;</c> 인스턴스.</param>
-    /// <param name="optionLens2">
+    /// <param name="optional1"><c>Optional&lt;Option&lt;T&gt;, TValue1&gt;</c> 인스턴스.</param>
+    /// <param name="optional2">
     /// 첫 번째 <see cref="Optional{T,TValue}"/>와 연결될 <c>Optional&lt;Option&lt;TValue1&gt;, TValue2&gt;</c>
     /// 인스턴스.
     /// </param>
@@ -222,26 +222,26 @@ public static class OptionalExtensions
     /// 두 <see cref="Optional{T,TValue}"/>를 연결하여 생성된 <c>Optional&lt;Option&lt;T&gt;, TValue2&gt;</c> 인스턴스.
     /// </returns>
     public static Optional<Maybe<T>, TValue2> Compose<T, TValue1, TValue2>(
-        this Optional<Maybe<T>, TValue1> optionLens1,
-        Optional<Maybe<TValue1>, TValue2> optionLens2
+        this Optional<Maybe<T>, TValue1> optional1,
+        Optional<Maybe<TValue1>, TValue2> optional2
     )
     {
         return Optional<Maybe<T>, TValue2>.Of(
             getter: source =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
-                var value2 = optionLens2.Get(value1);
+                var value1 = optional1.Get(value0);
+                var value2 = optional2.Get(value1);
 
                 return value2;
             },
             setter: (source, value) =>
             {
                 var value0 = source;
-                var value1 = optionLens1.Get(value0);
+                var value1 = optional1.Get(value0);
 
-                var newValue1 = optionLens2.Set(value1, value);
-                var newValue0 = newValue1.IsJust ? optionLens1.Set(source, newValue1.Value): source;
+                var newValue1 = optional2.Set(value1, value);
+                var newValue0 = newValue1.IsJust ? optional1.Set(source, newValue1.Value): source;
 
                 return newValue0;
             }

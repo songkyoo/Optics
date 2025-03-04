@@ -72,52 +72,6 @@ public static class OptionalExtensions
         return newSource;
     }
 
-    public static T Modify<T, TValue, TContext>(
-        this Optional<T, TValue> optional,
-        TContext context,
-        T source,
-        Func<TContext, TValue, Maybe<TValue>> fn
-    )
-    {
-        var value = optional.Get(source);
-        if (value.IsNothing)
-        {
-            return source;
-        }
-
-        var newValue = fn(context, value.Value);
-        if (newValue.IsNothing)
-        {
-            return source;
-        }
-
-        var newSource = optional.Set(source, newValue.Value);
-        return newSource;
-    }
-
-    public static T Modify<T, TValue, TContext>(
-        this Optional<T, TValue> optional,
-        TContext context,
-        T source,
-        Func<TContext, T, TValue, Maybe<TValue>> fn
-    )
-    {
-        var value = optional.Get(source);
-        if (value.IsNothing)
-        {
-            return source;
-        }
-
-        var newValue = fn(context, source, value.Value);
-        if (newValue.IsNothing)
-        {
-            return source;
-        }
-
-        var newSource = optional.Set(source, newValue.Value);
-        return newSource;
-    }
-
     /// <summary>
     /// 두 개의 <see cref="Optional{T,TValue}"/> 인스턴스를 연결하여 하나의 <see cref="Optional{T,TValue}"/>로 만든다.
     /// 생성된 인스턴스는 <see cref="Optional{T,TValue}.Get"/> 호출 결과에 값이 없는 경우

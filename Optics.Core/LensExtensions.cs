@@ -40,34 +40,6 @@ public static class LensExtensions
         return newSource;
     }
 
-    public static T Modify<T, TValue, TContext>(
-        this Lens<T, TValue> lens,
-        TContext context,
-        T source,
-        Func<TContext, TValue, TValue> fn
-    )
-    {
-        var value = lens.Get(source);
-        var newValue = fn(context, value);
-        var newSource = lens.Set(source, newValue);
-
-        return newSource;
-    }
-
-    public static T Modify<T, TValue, TContext>(
-        this Lens<T, TValue> lens,
-        TContext context,
-        T source,
-        Func<TContext, T, TValue, TValue> fn
-    )
-    {
-        var value = lens.Get(source);
-        var newValue = fn(context, source, value);
-        var newSource = lens.Set(source, newValue);
-
-        return newSource;
-    }
-
     /// <summary>
     /// 두 개의 <see cref="Lens{T,TValue}"/> 인스턴스를 연결하여 하나의 <see cref="Lens{T,TValue}"/>로 만든다.
     /// </summary>

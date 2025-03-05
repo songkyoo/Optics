@@ -6,14 +6,14 @@
 
   <PropertyGroup>
     <PackageId>Macaron.Optics</PackageId>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/songkyoo/Optics</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Macaron.Optics.Core" Version="1.0.0" />
+    <PackageReference Include="Macaron.Optics.Core" Version="1.0.1" />
     <PackageReference Include="Macaron.Optics.Generator" Version="1.0.0" />
   </ItemGroup>
 

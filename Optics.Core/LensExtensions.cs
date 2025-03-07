@@ -11,12 +11,12 @@ public static class LensExtensions
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
     /// <param name="lens"><see cref="Lens{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
-    /// <param name="fn">기존 값을 받아 새로운 값을 반환하는 함수.</param>
+    /// <param name="modifier">기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>새로운 <typeparamref name="T"/> 인스턴스.</returns>
-    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<TValue, TValue> fn)
+    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<TValue, TValue> modifier)
     {
         var value = lens.Get(source);
-        var newValue = fn(value);
+        var newValue = modifier.Invoke(value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;
@@ -29,12 +29,12 @@ public static class LensExtensions
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
     /// <param name="lens"><see cref="Lens{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
-    /// <param name="fn">대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수.</param>
+    /// <param name="modifier">대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>새로운 <typeparamref name="T"/> 인스턴스.</returns>
-    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<T, TValue, TValue> fn)
+    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<T, TValue, TValue> modifier)
     {
         var value = lens.Get(source);
-        var newValue = fn(source, value);
+        var newValue = modifier.Invoke(source, value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;

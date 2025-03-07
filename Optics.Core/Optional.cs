@@ -16,4 +16,7 @@ public static class Optional
     /// <c>Lens&lt;T, TValue&gt;</c>, <c>Optional&lt;Option&lt;T&gt;, TValue&gt;</c>를 반환하는 확장 메서드가 생성된다.
     /// </remarks>
     public static OptionalOf<T> Of<T>() => new();
+
+    public static Optional<T, TValue> Of<T, TValue>(Func<T, Maybe<TValue>> getter, Func<T, TValue, T> setter) =>
+        new(getter, setter);
 }

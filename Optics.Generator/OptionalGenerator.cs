@@ -62,7 +62,7 @@ public class OptionalGenerator : IIncrementalGenerator
                 optionalOfStringBuilder.AppendLine("        )");
                 optionalOfStringBuilder.AppendLine("        {");
                 optionalOfStringBuilder.AppendLine($"            return {OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(");
-                optionalOfStringBuilder.AppendLine($"                getter: static source => source.IsJust ? {MaybeTypeName}.Just(source.Value.{member.Name}) : {MaybeTypeName}.Nothing<{memberTypeName}>(),");
+                optionalOfStringBuilder.AppendLine($"                optionalGetter: static source => source.IsJust ? {MaybeTypeName}.Just(source.Value.{member.Name}) : {MaybeTypeName}.Nothing<{memberTypeName}>(),");
                 optionalOfStringBuilder.AppendLine($"                setter: static (source, value) => source.IsJust");
                 optionalOfStringBuilder.AppendLine($"                    ? {MaybeTypeName}.Just(source.Value with");
                 optionalOfStringBuilder.AppendLine("                    {");

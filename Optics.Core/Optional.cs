@@ -1,8 +1,10 @@
 using Macaron.Functional;
 
+using static Macaron.Functional.Maybe;
+
 namespace Macaron.Optics;
 
-public static class Optional
+public static partial class Optional
 {
     /// <summary>
     /// <see cref="OptionalOf{T}"/> 인스턴스를 생성한다.
@@ -17,6 +19,21 @@ public static class Optional
     /// </remarks>
     public static OptionalOf<T> Of<T>() => new();
 
-    public static Optional<T, TValue> Of<T, TValue>(Func<T, Maybe<TValue>> getter, Func<T, TValue, T> setter) =>
-        new(getter, setter);
+    public static Optional<T, TValue> Of<T, TValue>(Func<T, Maybe<TValue>> optionalGetter, Func<T, TValue, T> setter) =>
+        new(optionalGetter, setter);
+
+    public static Optional<T, TValue> Of<T, TValue>(OptionalGetter<T, TValue> optionalGetter, Setter<T, TValue> setter)
+    {
+        return new(optionalGetter.Get, setter.Set);
+    }
+
+    public static Optional<T, TValue> Of<T, TValue>(Func<T, TValue> getter, Func<T, TValue, T> setter)
+    {
+        return new(source => Just(getter(source)), setter);
+    }
+
+    public static Optional<T, TValue> Of<T, TValue>(Getter<T, TValue> getter, Setter<T, TValue> setter)
+    {
+        return new(source => Just(getter.Get(source)), setter.Set);
+    }
 }

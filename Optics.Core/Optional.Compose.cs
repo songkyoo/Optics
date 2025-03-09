@@ -5,7 +5,7 @@ using static Macaron.Functional.Maybe;
 
 namespace Macaron.Optics;
 
-public static partial class Lens
+partial class Optional
 {
     public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
         Optional<T, TValue1> optional1,
@@ -13,7 +13,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue2>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -55,7 +55,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue2>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -98,7 +98,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue3>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -154,7 +154,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue3>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -211,7 +211,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue4>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -281,7 +281,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue4>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -352,7 +352,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue5>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -436,7 +436,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue5>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -521,7 +521,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue6>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -619,7 +619,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue6>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -718,7 +718,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue7>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -830,7 +830,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue7>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 
@@ -943,7 +943,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue8>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -1069,7 +1069,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue8>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 

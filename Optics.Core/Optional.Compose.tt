@@ -8,7 +8,7 @@ using static Macaron.Functional.Maybe;
 
 namespace Macaron.Optics;
 
-public static partial class Lens
+partial class Optional
 {
 <# for (int n = 2; n <= MaxCount; n++) { #>
     public static Optional<T, TValue<#= n #>> Compose<T, <# for (int i = 1; i < n; i++) { #>TValue<#= i #>, <# } #>TValue<#= n #>>(
@@ -20,7 +20,7 @@ public static partial class Lens
     )
     {
         return Optional<T, TValue<#= n #>>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = Just(source);
 
@@ -65,7 +65,7 @@ public static partial class Lens
     )
     {
         return Optional<Maybe<T>, TValue<#= n #>>.Of(
-            getter: source =>
+            optionalGetter: source =>
             {
                 var value0 = source;
 

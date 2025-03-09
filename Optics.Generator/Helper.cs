@@ -22,7 +22,16 @@ internal static class Helper
 
         var semanticModel = generatorSyntaxContext.SemanticModel;
         var methodSymbol = semanticModel.GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
-        if (methodSymbol?.IsStatic is not true || ToFullyQualifiedName(methodSymbol.ContainingType) != containingType)
+        if (methodSymbol?.IsStatic is not true ||
+            methodSymbol.Name != "Of" ||
+            ToFullyQualifiedName(methodSymbol.ContainingType) != containingType
+        )
+        {
+            return null;
+        }
+
+        var typeArgumentList = genericNameSyntax.TypeArgumentList;
+        if (typeArgumentList.Arguments.Count != 1)
         {
             return null;
         }

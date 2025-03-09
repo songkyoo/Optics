@@ -1,5 +1,7 @@
 using Macaron.Functional;
 
+using static Macaron.Functional.Maybe;
+
 namespace Macaron.Optics;
 
 /// <summary>
@@ -17,13 +19,28 @@ public readonly record struct Optional<T, TValue>(
 {
     #region Static
     /// <summary>
-    /// 지정된 <paramref name="getter"/>와 <paramref name="setter"/>로 <see cref="Optional{T,TValue}"/> 인스턴스를
+    /// 지정된 <paramref name="optionalGetter"/>와 <paramref name="setter"/>로 <see cref="Optional{T,TValue}"/> 인스턴스를
     /// 생성한다.
     /// </summary>
-    /// <param name="getter">값을 획득하는 함수.</param>
+    /// <param name="optionalGetter">값을 획득하는 함수.</param>
     /// <param name="setter">값을 설정하는 함수.</param>
     /// <returns><see cref="Optional{T,TValue}"/> 인스턴스.</returns>
-    public static Optional<T, TValue> Of(Func<T, Maybe<TValue>> getter, Func<T, TValue, T> setter)
-        => new(getter, setter);
+    public static Optional<T, TValue> Of(Func<T, Maybe<TValue>> optionalGetter, Func<T, TValue, T> setter) =>
+        new(optionalGetter, setter);
+
+    public static Optional<T, TValue> Of(OptionalGetter<T, TValue> optionalGetter, Setter<T, TValue> setter) => new(
+        optionalGetter.Get,
+        setter.Set
+    );
+
+    public static Optional<T, TValue> Of(Func<T, TValue> getter, Func<T, TValue, T> setter)
+    {
+        return new(source => Just(getter(source)), setter);
+    }
+
+    public static Optional<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter)
+    {
+        return new(source => Just(getter.Get(source)), setter.Set);
+    }
     #endregion
 }

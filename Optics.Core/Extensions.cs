@@ -64,7 +64,7 @@ public static class Extensions
     ) where TIndex : notnull
     {
         return Optional<T, TIndexedValue>.Of(
-            getter: source => getter(lens.Get(source), index),
+            optionalGetter: source => getter(lens.Get(source), index),
             setter: (source, value) => lens.Set(source, setter(lens.Get(source), index, value))
         );
     }

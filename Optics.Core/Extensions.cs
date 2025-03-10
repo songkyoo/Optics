@@ -14,8 +14,7 @@ public static class Extensions
     {
         return lens.At(
             getter: static (dict, key) => dict.GetItem(key),
-            setter: static (dict, key, value) => dict.ContainsKey(key) ? dict.SetItem(key, value) : dict
-            ,
+            setter: static (dict, key, value) => dict.ContainsKey(key) ? dict.SetItem(key, value) : dict,
             index: key
         );
     }

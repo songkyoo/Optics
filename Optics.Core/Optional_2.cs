@@ -33,14 +33,14 @@ public readonly record struct Optional<T, TValue>(
         setter.Set
     );
 
-    public static Optional<T, TValue> Of(Func<T, TValue> getter, Func<T, TValue, T> setter)
-    {
-        return new(source => Just(getter(source)), setter);
-    }
+    public static Optional<T, TValue> Of(Func<T, TValue> getter, Func<T, TValue, T> setter) => new(
+        source => Just(getter.Invoke(source)),
+        setter
+    );
 
-    public static Optional<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter)
-    {
-        return new(source => Just(getter.Get(source)), setter.Set);
-    }
+    public static Optional<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter) => new(
+        source => Just(getter.Get(source)),
+        setter.Set
+    );
     #endregion
 }

@@ -6,6 +6,66 @@ namespace Macaron.Optics;
 
 public static class OptionalExtensions
 {
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Func<Maybe<TValue1>, TValue2> getter
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = getter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Getter<Maybe<TValue1>, TValue2> getter
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = getter.Get(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Func<Maybe<TValue1>, Maybe<TValue2>> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = optionalGetter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        OptionalGetter<Maybe<TValue1>, TValue2> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = optionalGetter.Get(value1);
+
+            return value2;
+        });
+    }
+
     /// <summary>
     /// 두 개의 <see cref="Optional{T,TValue}"/> 인스턴스를 연결하여 하나의 <see cref="Optional{T,TValue}"/>로 만든다.
     /// 생성된 인스턴스는 <see cref="Optional{T,TValue}.Get"/> 호출 결과에 값이 없는 경우
@@ -355,6 +415,38 @@ public static class OptionalExtensions
 
         var newSource = optional.Set(source, newValue.Value);
         return newSource;
+    }
+
+    public static Setter<T, TValue> ToSetter<T, TValue>(
+        this Optional<T, TValue> optional
+    )
+    {
+        return Setter<T, TValue>.Of(optional.Set);
+    }
+
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<T, TValue> getDefaultValue
+    )
+    {
+        return Getter<T, TValue>.Of(
+            source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source)
+        );
+    }
+
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<TValue> getDefaultValue
+    )
+    {
+        return Getter<T, TValue>.Of(
+            source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
+        );
+    }
+
+    public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(this Optional<T, TValue> optional)
+    {
+        return OptionalGetter<T, TValue>.Of(optional.Get);
     }
 
     /// <summary>

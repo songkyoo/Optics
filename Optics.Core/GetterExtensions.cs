@@ -1,15 +1,30 @@
-using static Macaron.Functional.Maybe;
+using Macaron.Functional;
 
 namespace Macaron.Optics;
 
-public static partial class GetterExtensions
+public static class GetterExtensions
 {
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Getter<T, TValue1> getter1,
+        Func<TValue1, TValue2> getter2
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = getter1.Get(value0);
+            var value2 = getter2.Invoke(value1);
+
+            return value2;
+        });
+    }
+
     public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Getter<T, TValue1> getter1,
         Getter<TValue1, TValue2> getter2
     )
     {
-        return Getter.Of<T, TValue2>(source =>
+        return Getter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter1.Get(value0);
@@ -21,10 +36,25 @@ public static partial class GetterExtensions
 
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Getter<T, TValue1> getter,
+        Func<TValue1, Maybe<TValue2>> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = getter.Get(value0);
+            var value2 = optionalGetter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Getter<T, TValue1> getter,
         OptionalGetter<TValue1, TValue2> optionalGetter
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -39,7 +69,7 @@ public static partial class GetterExtensions
         Optional<TValue1, TValue2> optional
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -54,7 +84,7 @@ public static partial class GetterExtensions
         Prism<TValue1, TValue2> prism
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -69,7 +99,7 @@ public static partial class GetterExtensions
         Lens<TValue1, TValue2> lens
     )
     {
-        return Getter.Of<T, TValue2>(source =>
+        return Getter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -84,7 +114,7 @@ public static partial class GetterExtensions
         Iso<TValue1, TValue2> iso
     )
     {
-        return Getter.Of<T, TValue2>(source =>
+        return Getter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -98,13 +128,7 @@ public static partial class GetterExtensions
         this Getter<T, TValue> getter
     )
     {
-        return OptionalGetter.Of<T, TValue>(source =>
-        {
-            var value0 = source;
-            var value1 = Just(getter.Get(value0));
-
-            return value1;
-        });
+        return OptionalGetter<T, TValue>.Of(getter);
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(
@@ -113,8 +137,8 @@ public static partial class GetterExtensions
     )
     {
         return Optional<T, TValue>.Of(
-            getter: getter,
-            setter: Setter.Of(setter)
+            getter: getter.Get,
+            setter: setter
         );
     }
 
@@ -124,8 +148,30 @@ public static partial class GetterExtensions
     )
     {
         return Optional<T, TValue>.Of(
-            optionalGetter: OptionalGetter.Of(getter),
+            getter: getter,
             setter: setter
+        );
+    }
+
+    public static Prism<T, TValue> ToPrism<T, TValue>(
+        this Getter<T, TValue> getter,
+        Func<TValue, T> constructor
+    )
+    {
+        return Prism<T, TValue>.Of(
+            getter: getter.Get,
+            constructor: constructor
+        );
+    }
+
+    public static Prism<T, TValue> ToPrism<T, TValue>(
+        this Getter<T, TValue> getter,
+        Constructor<T, TValue> constructor
+    )
+    {
+        return Prism<T, TValue>.Of(
+            getter: getter,
+            constructor: constructor
         );
     }
 

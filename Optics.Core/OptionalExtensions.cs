@@ -347,6 +347,54 @@ public static class OptionalExtensions
         );
     }
 
+    public static Optional<T, TValue> Transform<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<T, TValue, Maybe<TValue>>? mapGet = null,
+        Func<T, TValue, TValue>? mapSet = null
+    )
+    {
+        return Optional<T, TValue>.Of(
+            optionalGetter: source =>
+            {
+                var value = optional.Get(source);
+                if (value.IsNothing)
+                {
+                    return value;
+                }
+
+                return mapGet != null ? mapGet.Invoke(source, value.Value) : value;
+            },
+            setter: (source, value) =>
+            {
+                return optional.Set(source, mapSet != null ? mapSet.Invoke(source, value) : value);
+            }
+        );
+    }
+
+    public static Optional<T, TValue> Transform<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<TValue, Maybe<TValue>>? mapGet = null,
+        Func<TValue, TValue>? mapSet = null
+    )
+    {
+        return Optional<T, TValue>.Of(
+            optionalGetter: source =>
+            {
+                var value = optional.Get(source);
+                if (value.IsNothing)
+                {
+                    return value;
+                }
+
+                return mapGet != null ? mapGet.Invoke(value.Value) : value;
+            },
+            setter: (source, value) =>
+            {
+                return optional.Set(source, mapSet != null ? mapSet.Invoke(value) : value);
+            }
+        );
+    }
+
     /// <summary>
     /// <see cref="Optional{T,TValue}"/> 인스턴스를 사용하여 대상 인스턴스의 값을 읽고 그 값을 사용하여 새로운 인스턴스를 생성한다.
     /// </summary>
@@ -362,7 +410,11 @@ public static class OptionalExtensions
     /// <paramref name="modifier"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
     /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
     /// </returns>
-    public static T Modify<T, TValue>(this Optional<T, TValue> optional, T source, Func<TValue, Maybe<TValue>> modifier)
+    public static T Modify<T, TValue>(
+        this Optional<T, TValue> optional,
+        T source,
+        Func<TValue, Maybe<TValue>> modifier
+    )
     {
         var value = optional.Get(source);
         if (value.IsNothing)
@@ -407,7 +459,7 @@ public static class OptionalExtensions
             return source;
         }
 
-        var newValue = modifier(source, value.Value);
+        var newValue = modifier.Invoke(source, value.Value);
         if (newValue.IsNothing)
         {
             return source;

@@ -1,7 +1,59 @@
+using Macaron.Functional;
+
 namespace Macaron.Optics;
 
 public static class PrismExtensions
 {
+    public static Prism<T, TValue> Transform<T, TValue>(
+        this Prism<T, TValue> prism,
+        Func<T, TValue, Maybe<TValue>>? mapGet = null,
+        Func<TValue, T, T>? mapConstruct = null
+    )
+    {
+        return Prism<T, TValue>.Of(
+            optionalGetter: source =>
+            {
+                var value = prism.Get(source);
+                if (value.IsNothing)
+                {
+                    return value;
+                }
+
+                return mapGet != null ? mapGet.Invoke(source, value.Value) : value;
+            },
+            constructor: value =>
+            {
+                var source = prism.Construct(value);
+                return mapConstruct != null ? mapConstruct.Invoke(value, source) : source;
+            }
+        );
+    }
+
+    public static Prism<T, TValue> Transform<T, TValue>(
+        this Prism<T, TValue> prism,
+        Func<TValue, Maybe<TValue>>? mapGet = null,
+        Func<T, T>? mapConstruct = null
+    )
+    {
+        return Prism<T, TValue>.Of(
+            optionalGetter: source =>
+            {
+                var value = prism.Get(source);
+                if (value.IsNothing)
+                {
+                    return value;
+                }
+
+                return mapGet != null ? mapGet.Invoke(value.Value) : value;
+            },
+            constructor: value =>
+            {
+                var source = prism.Construct(value);
+                return mapConstruct != null ? mapConstruct.Invoke(source) : source;
+            }
+        );
+    }
+
     public static Constructor<T, TValue> ToConstructor<T, TValue>(
         this Prism<T, TValue> prism
     )

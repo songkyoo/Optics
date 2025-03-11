@@ -11,7 +11,7 @@ public static class LensExtensions
         Func<TValue1, TValue2> getter
     )
     {
-        return Getter.Of<T, TValue2>(source =>
+        return Getter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -26,7 +26,7 @@ public static class LensExtensions
         Getter<TValue1, TValue2> getter
     )
     {
-        return Getter.Of<T, TValue2>(source =>
+        return Getter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -41,7 +41,7 @@ public static class LensExtensions
         Func<TValue1, Maybe<TValue2>> optionalGetter
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -56,7 +56,7 @@ public static class LensExtensions
         OptionalGetter<TValue1, TValue2> optionalGetter
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter<T, TValue2>.Of(source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -166,6 +166,44 @@ public static class LensExtensions
                 var newValue0 = lens.Set(source, newValue1);
 
                 return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue> Transform<T, TValue>(
+        this Lens<T, TValue> lens,
+        Func<T, TValue, TValue>? mapGet = null,
+        Func<T, TValue, TValue>? mapSet = null
+    )
+    {
+        return Lens<T, TValue>.Of(
+            getter: source =>
+            {
+                var value = lens.Get(source);
+                return mapGet != null ? mapGet.Invoke(source, value) : value;
+            },
+            setter: (source, value) =>
+            {
+                return lens.Set(source, mapSet != null ? mapSet.Invoke(source, value) : value);
+            }
+        );
+    }
+
+    public static Lens<T, TValue> Transform<T, TValue>(
+        this Lens<T, TValue> lens,
+        Func<TValue, TValue>? mapGet = null,
+        Func<TValue, TValue>? mapSet = null
+    )
+    {
+        return Lens<T, TValue>.Of(
+            getter: source =>
+            {
+                var value = lens.Get(source);
+                return mapGet != null ? mapGet.Invoke(value) : value;
+            },
+            setter: (source, value) =>
+            {
+                return lens.Set(source, mapSet != null ? mapSet.Invoke(value) : value);
             }
         );
     }

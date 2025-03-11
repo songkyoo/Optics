@@ -88,6 +88,46 @@ public static class IsoExtensions
         });
     }
 
+    public static Iso<T, TValue> Transform<T, TValue>(
+        this Iso<T, TValue> iso,
+        Func<T, TValue, TValue>? mapGet = null,
+        Func<TValue, T, T>? mapConstruct = null
+    )
+    {
+        return Iso<T, TValue>.Of(
+            getter: source =>
+            {
+                var value = iso.Get(source);
+                return mapGet != null ? mapGet.Invoke(source, value) : value;
+            },
+            constructor: value =>
+            {
+                var source = iso.Construct(value);
+                return mapConstruct != null ? mapConstruct.Invoke(value, source) : source;
+            }
+        );
+    }
+
+    public static Iso<T, TValue> Transform<T, TValue>(
+        this Iso<T, TValue> iso,
+        Func<TValue, TValue>? mapGet = null,
+        Func<T, T>? mapConstruct = null
+    )
+    {
+        return Iso<T, TValue>.Of(
+            getter: source =>
+            {
+                var value = iso.Get(source);
+                return mapGet != null ? mapGet.Invoke(value) : value;
+            },
+            constructor: value =>
+            {
+                var source = iso.Construct(value);
+                return mapConstruct != null ? mapConstruct.Invoke(source) : source;
+            }
+        );
+    }
+
     public static Constructor<T, TValue> ToConstructor<T, TValue>(
         this Iso<T, TValue> iso
     )

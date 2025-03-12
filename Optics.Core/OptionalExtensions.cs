@@ -6,36 +6,6 @@ namespace Macaron.Optics;
 
 public static class OptionalExtensions
 {
-    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Optional<T, TValue1> optional,
-        Func<Maybe<TValue1>, TValue2> getter
-    )
-    {
-        return Getter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = optional.Get(value0);
-            var value2 = getter.Invoke(value1);
-
-            return value2;
-        });
-    }
-
-    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Optional<T, TValue1> optional,
-        Getter<Maybe<TValue1>, TValue2> getter
-    )
-    {
-        return Getter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = optional.Get(value0);
-            var value2 = getter.Get(value1);
-
-            return value2;
-        });
-    }
-
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Optional<T, TValue1> optional,
         Func<Maybe<TValue1>, Maybe<TValue2>> optionalGetter
@@ -61,6 +31,36 @@ public static class OptionalExtensions
             var value0 = source;
             var value1 = optional.Get(value0);
             var value2 = optionalGetter.Get(value1);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Func<Maybe<TValue1>, TValue2> getter
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = getter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Getter<Maybe<TValue1>, TValue2> getter
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = optional.Get(value0);
+            var value2 = getter.Get(value1);
 
             return value2;
         });
@@ -403,43 +403,6 @@ public static class OptionalExtensions
     /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
     /// <param name="modifier">
-    /// 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의 <see cref="Optional{T,TValue}.Get"/> 호출의
-    /// 결과가 값을 가지고 있지 않다면 호출되지 않는다.
-    /// </param>
-    /// <returns>
-    /// <paramref name="modifier"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
-    /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
-    /// </returns>
-    public static T Modify<T, TValue>(
-        this Optional<T, TValue> optional,
-        T source,
-        Func<TValue, Maybe<TValue>> modifier
-    )
-    {
-        var value = optional.Get(source);
-        if (value.IsNothing)
-        {
-            return source;
-        }
-
-        var newValue = modifier.Invoke(value.Value);
-        if (newValue.IsNothing)
-        {
-            return source;
-        }
-
-        var newSource = optional.Set(source, newValue.Value);
-        return newSource;
-    }
-
-    /// <summary>
-    /// <see cref="Optional{T,TValue}"/> 인스턴스를 사용하여 대상 인스턴스의 값을 읽고 그 값을 사용하여 새로운 인스턴스를 생성한다.
-    /// </summary>
-    /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
-    /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
-    /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
-    /// <param name="source">대상 인스턴스.</param>
-    /// <param name="modifier">
     /// 대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의
     /// <see cref="Optional{T,TValue}.Get"/> 호출의 결과가 값을 가지고 있지 않다면 호출되지 않는다.
     /// </param>
@@ -469,11 +432,55 @@ public static class OptionalExtensions
         return newSource;
     }
 
+    /// <summary>
+    /// <see cref="Optional{T,TValue}"/> 인스턴스를 사용하여 대상 인스턴스의 값을 읽고 그 값을 사용하여 새로운 인스턴스를 생성한다.
+    /// </summary>
+    /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
+    /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
+    /// <param name="optional"><see cref="Optional{T,TValue}"/> 인스턴스.</param>
+    /// <param name="source">대상 인스턴스.</param>
+    /// <param name="modifier">
+    /// 기존 값을 받아 새로운 값을 반환하는 함수. <paramref name="optional"/>의 <see cref="Optional{T,TValue}.Get"/> 호출의
+    /// 결과가 값을 가지고 있지 않다면 호출되지 않는다.
+    /// </param>
+    /// <returns>
+    /// <paramref name="modifier"/> 함수가 반환한 <see cref="Maybe{TValue}"/> 인스턴스가 값을 가지고 있다면 해당 값을 설정한 새
+    /// <typeparamref name="T"/> 인스턴스를 반환하고 그렇지 않다면 <paramref name="source"/>를 그대로 반환한다.
+    /// </returns>
+    public static T Modify<T, TValue>(
+        this Optional<T, TValue> optional,
+        T source,
+        Func<TValue, Maybe<TValue>> modifier
+    )
+    {
+        var value = optional.Get(source);
+        if (value.IsNothing)
+        {
+            return source;
+        }
+
+        var newValue = modifier.Invoke(value.Value);
+        if (newValue.IsNothing)
+        {
+            return source;
+        }
+
+        var newSource = optional.Set(source, newValue.Value);
+        return newSource;
+    }
+
     public static Setter<T, TValue> ToSetter<T, TValue>(
         this Optional<T, TValue> optional
     )
     {
         return Setter<T, TValue>.Of(optional.Set);
+    }
+
+    public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
+        this Optional<T, TValue> optional
+    )
+    {
+        return OptionalGetter<T, TValue>.Of(optional.Get);
     }
 
     public static Getter<T, TValue> ToGetter<T, TValue>(
@@ -496,11 +503,6 @@ public static class OptionalExtensions
         );
     }
 
-    public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(this Optional<T, TValue> optional)
-    {
-        return OptionalGetter<T, TValue>.Of(optional.Get);
-    }
-
     /// <summary>
     /// <see cref="Optional{T,TValue}"/> 인스턴스를 <see cref="Lens{T,TValue}"/> 인스턴스로 변환한다.
     /// </summary>
@@ -511,7 +513,10 @@ public static class OptionalExtensions
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
     /// <returns><see cref="Lens{T,TValue}"/> 인스턴스.</returns>
-    public static Lens<T, TValue> ToLens<T, TValue>(this Optional<T, TValue> optional, Func<T, TValue> getDefaultValue)
+    public static Lens<T, TValue> ToLens<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<T, TValue> getDefaultValue
+    )
     {
         return Lens<T, TValue>.Of(
             getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source),
@@ -529,7 +534,10 @@ public static class OptionalExtensions
     /// <typeparam name="T"><see cref="Optional{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버를 나타내는 타입.</typeparam>
     /// <returns><see cref="Lens{T,TValue}"/> 인스턴스.</returns>
-    public static Lens<T, TValue> ToLens<T, TValue>(this Optional<T, TValue> optional, Func<TValue> getDefaultValue)
+    public static Lens<T, TValue> ToLens<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<TValue> getDefaultValue
+    )
     {
         return Lens<T, TValue>.Of(
             getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),

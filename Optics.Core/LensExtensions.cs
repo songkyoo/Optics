@@ -6,36 +6,6 @@ namespace Macaron.Optics;
 
 public static class LensExtensions
 {
-    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Lens<T, TValue1> lens,
-        Func<TValue1, TValue2> getter
-    )
-    {
-        return Getter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = lens.Get(value0);
-            var value2 = getter.Invoke(value1);
-
-            return value2;
-        });
-    }
-
-    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Lens<T, TValue1> lens,
-        Getter<TValue1, TValue2> getter
-    )
-    {
-        return Getter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = lens.Get(value0);
-            var value2 = getter.Get(value1);
-
-            return value2;
-        });
-    }
-
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Lens<T, TValue1> lens,
         Func<TValue1, Maybe<TValue2>> optionalGetter
@@ -66,42 +36,34 @@ public static class LensExtensions
         });
     }
 
-    /// <summary>
-    /// 두 개의 <see cref="Lens{T,TValue}"/> 인스턴스를 연결하여 하나의 <see cref="Lens{T,TValue}"/>로 만든다.
-    /// </summary>
-    /// <typeparam name="T"><see cref="Lens{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
-    /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
-    /// <typeparam name="TValue2"><typeparamref name="TValue1"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
-    /// <param name="lens1"><c>Lens&lt;T, TValue1&gt;</c> 인스턴스.</param>
-    /// <param name="lens2">
-    /// 첫 번째 <see cref="Lens{T,TValue}"/>와 연결될 <c>Lens&lt;TValue1, TValue2&gt;</c> 인스턴스.
-    /// </param>
-    /// <returns>두 <see cref="Lens{T,TValue}"/>를 연결하여 생성된 <c>Lens&lt;T, TValue2&gt;</c> 인스턴스.</returns>
-    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Lens<T, TValue1> lens1,
-        Lens<TValue1, TValue2> lens2
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Lens<T, TValue1> lens,
+        Func<TValue1, TValue2> getter
     )
     {
-        return Lens<T, TValue2>.Of(
-            getter: source =>
-            {
-                var value0 = source;
-                var value1 = lens1.Get(value0);
-                var value2 = lens2.Get(value1);
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = lens.Get(value0);
+            var value2 = getter.Invoke(value1);
 
-                return value2;
-            },
-            setter: (source, value) =>
-            {
-                var value0 = source;
-                var value1 = lens1.Get(value0);
+            return value2;
+        });
+    }
 
-                var newValue1 = lens2.Set(value1, value);
-                var newValue0 = lens1.Set(value0, newValue1);
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Lens<T, TValue1> lens,
+        Getter<TValue1, TValue2> getter
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = lens.Get(value0);
+            var value2 = getter.Get(value1);
 
-                return newValue0;
-            }
-        );
+            return value2;
+        });
     }
 
     /// <summary>
@@ -140,6 +102,44 @@ public static class LensExtensions
 
                 var newValue1 = optional.Set(value1, value);
                 var newValue0 = lens.Set(source, newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    /// <summary>
+    /// 두 개의 <see cref="Lens{T,TValue}"/> 인스턴스를 연결하여 하나의 <see cref="Lens{T,TValue}"/>로 만든다.
+    /// </summary>
+    /// <typeparam name="T"><see cref="Lens{T,TValue}"/>가 다루는 원본 객체의 타입.</typeparam>
+    /// <typeparam name="TValue1"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
+    /// <typeparam name="TValue2"><typeparamref name="TValue1"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
+    /// <param name="lens1"><c>Lens&lt;T, TValue1&gt;</c> 인스턴스.</param>
+    /// <param name="lens2">
+    /// 첫 번째 <see cref="Lens{T,TValue}"/>와 연결될 <c>Lens&lt;TValue1, TValue2&gt;</c> 인스턴스.
+    /// </param>
+    /// <returns>두 <see cref="Lens{T,TValue}"/>를 연결하여 생성된 <c>Lens&lt;T, TValue2&gt;</c> 인스턴스.</returns>
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Lens<T, TValue1> lens1,
+        Lens<TValue1, TValue2> lens2
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = lens1.Get(value0);
+                var value2 = lens2.Get(value1);
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = lens1.Get(value0);
+
+                var newValue1 = lens2.Set(value1, value);
+                var newValue0 = lens1.Set(value0, newValue1);
 
                 return newValue0;
             }
@@ -215,12 +215,16 @@ public static class LensExtensions
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
     /// <param name="lens"><see cref="Lens{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
-    /// <param name="modifier">기존 값을 받아 새로운 값을 반환하는 함수.</param>
+    /// <param name="modifier">대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>새로운 <typeparamref name="T"/> 인스턴스.</returns>
-    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<TValue, TValue> modifier)
+    public static T Modify<T, TValue>(
+        this Lens<T, TValue> lens,
+        T source,
+        Func<T, TValue, TValue> modifier
+    )
     {
         var value = lens.Get(source);
-        var newValue = modifier.Invoke(value);
+        var newValue = modifier.Invoke(source, value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;
@@ -233,12 +237,16 @@ public static class LensExtensions
     /// <typeparam name="TValue"><typeparamref name="T"/> 타입에서 렌즈가 다루는 대상 멤버의 타입.</typeparam>
     /// <param name="lens"><see cref="Lens{T,TValue}"/> 인스턴스.</param>
     /// <param name="source">대상 인스턴스.</param>
-    /// <param name="modifier">대상 인스턴스와 기존 값을 받아 새로운 값을 반환하는 함수.</param>
+    /// <param name="modifier">기존 값을 받아 새로운 값을 반환하는 함수.</param>
     /// <returns>새로운 <typeparamref name="T"/> 인스턴스.</returns>
-    public static T Modify<T, TValue>(this Lens<T, TValue> lens, T source, Func<T, TValue, TValue> modifier)
+    public static T Modify<T, TValue>(
+        this Lens<T, TValue> lens,
+        T source,
+        Func<TValue, TValue> modifier
+    )
     {
         var value = lens.Get(source);
-        var newValue = modifier.Invoke(source, value);
+        var newValue = modifier.Invoke(value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;
@@ -249,14 +257,14 @@ public static class LensExtensions
         return Setter<T, TValue>.Of(lens.Set);
     }
 
-    public static Getter<T, TValue> ToGetter<T, TValue>(this Lens<T, TValue> lens)
-    {
-        return Getter<T, TValue>.Of(lens.Get);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(this Lens<T, TValue> lens)
     {
         return OptionalGetter<T, TValue>.Of(lens.Get);
+    }
+
+    public static Getter<T, TValue> ToGetter<T, TValue>(this Lens<T, TValue> lens)
+    {
+        return Getter<T, TValue>.Of(lens.Get);
     }
 
     /// <summary>

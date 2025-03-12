@@ -4,28 +4,62 @@ namespace Macaron.Optics;
 
 public static class IsoExtensions
 {
-    public static Iso<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Iso<T, TValue1> iso1,
-        Iso<TValue1, TValue2> iso2
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Func<TValue2, TValue1> constructor
     )
     {
-        return Iso<T, TValue2>.Of(
-            getter: source =>
-            {
-                var value0 = source;
-                var value1 = iso1.Get(value0);
-                var value2 = iso2.Get(value1);
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Invoke(value);
+            var newValue0 = iso.Construct(newValue1);
 
-                return value2;
-            },
-            constructor: value =>
-            {
-                var newValue1 = iso2.Construct(value);
-                var newValue0 = iso1.Construct(newValue1);
+            return newValue0;
+        });
+    }
 
-                return newValue0;
-            }
-        );
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Constructor<TValue1, TValue2> constructor
+    )
+    {
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = iso.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Func<TValue1, Maybe<TValue2>> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = iso.Get(value0);
+            var value2 = optionalGetter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        OptionalGetter<TValue1, TValue2> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = iso.Get(value0);
+            var value2 = optionalGetter.Get(value1);
+
+            return value2;
+        });
     }
 
     public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
@@ -58,34 +92,106 @@ public static class IsoExtensions
         });
     }
 
-    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
         this Iso<T, TValue1> iso,
-        Func<TValue1, Maybe<TValue2>> optionalGetter
+        Optional<TValue1, TValue2> optional
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = iso.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+        return Optional<T, TValue2>.Of(
+            optionalGetter: source =>
+            {
+                var value0 = source;
+                var value1 = iso.Get(value0);
+                var value2 = optional.Get(value1);
 
-            return value2;
-        });
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = iso.Get(value0);
+
+                var newValue1 = optional.Set(value1, value);
+                var newValue0 = iso.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
     }
 
-    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
         this Iso<T, TValue1> iso,
-        OptionalGetter<TValue1, TValue2> optionalGetter
+        Lens<TValue1, TValue2> lens
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = iso.Get(value0);
-            var value2 = optionalGetter.Get(value1);
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = iso.Get(value0);
+                var value2 = lens.Get(value1);
 
-            return value2;
-        });
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = iso.Get(value0);
+
+                var newValue1 = lens.Set(value1, value);
+                var newValue0 = iso.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Prism<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Prism<TValue1, TValue2> prism
+    )
+    {
+        return Prism<T, TValue2>.Of(
+            optionalGetter: source =>
+            {
+                var value0 = source;
+                var value1 = iso.Get(value0);
+                var value2 = prism.Get(value1);
+
+                return value2;
+            },
+            constructor: value =>
+            {
+                var newValue1 = prism.Construct(value);
+                var newValue0 = iso.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Iso<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso1,
+        Iso<TValue1, TValue2> iso2
+    )
+    {
+        return Iso<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = iso1.Get(value0);
+                var value2 = iso2.Get(value1);
+
+                return value2;
+            },
+            constructor: value =>
+            {
+                var newValue1 = iso2.Construct(value);
+                var newValue0 = iso1.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
     }
 
     public static Iso<T, TValue> Transform<T, TValue>(
@@ -135,18 +241,18 @@ public static class IsoExtensions
         return Constructor<T, TValue>.Of(iso.Construct);
     }
 
-    public static Getter<T, TValue> ToGetter<T, TValue>(
-        this Iso<T, TValue> iso
-    )
-    {
-        return Getter<T, TValue>.Of(iso.Get);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
         this Iso<T, TValue> iso
     )
     {
         return OptionalGetter<T, TValue>.Of(iso.Get);
+    }
+
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this Iso<T, TValue> iso
+    )
+    {
+        return Getter<T, TValue>.Of(iso.Get);
     }
 
     public static Prism<T, TValue> ToPrism<T, TValue>(

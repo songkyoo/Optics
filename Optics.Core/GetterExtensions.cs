@@ -4,6 +4,36 @@ namespace Macaron.Optics;
 
 public static class GetterExtensions
 {
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Getter<T, TValue1> getter,
+        Func<TValue1, Maybe<TValue2>> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = getter.Get(value0);
+            var value2 = optionalGetter.Invoke(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Getter<T, TValue1> getter,
+        OptionalGetter<TValue1, TValue2> optionalGetter
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = getter.Get(value0);
+            var value2 = optionalGetter.Get(value1);
+
+            return value2;
+        });
+    }
+
     public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Getter<T, TValue1> getter1,
         Func<TValue1, TValue2> getter2
@@ -36,36 +66,6 @@ public static class GetterExtensions
 
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Getter<T, TValue1> getter,
-        Func<TValue1, Maybe<TValue2>> optionalGetter
-    )
-    {
-        return OptionalGetter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = getter.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
-
-            return value2;
-        });
-    }
-
-    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Getter<T, TValue1> getter,
-        OptionalGetter<TValue1, TValue2> optionalGetter
-    )
-    {
-        return OptionalGetter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = getter.Get(value0);
-            var value2 = optionalGetter.Get(value1);
-
-            return value2;
-        });
-    }
-
-    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Getter<T, TValue1> getter,
         Optional<TValue1, TValue2> optional
     )
     {
@@ -74,21 +74,6 @@ public static class GetterExtensions
             var value0 = source;
             var value1 = getter.Get(value0);
             var value2 = optional.Get(value1);
-
-            return value2;
-        });
-    }
-
-    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Getter<T, TValue1> getter,
-        Prism<TValue1, TValue2> prism
-    )
-    {
-        return OptionalGetter<T, TValue2>.Of(source =>
-        {
-            var value0 = source;
-            var value1 = getter.Get(value0);
-            var value2 = prism.Get(value1);
 
             return value2;
         });
@@ -104,6 +89,21 @@ public static class GetterExtensions
             var value0 = source;
             var value1 = getter.Get(value0);
             var value2 = lens.Get(value1);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Getter<T, TValue1> getter,
+        Prism<TValue1, TValue2> prism
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value0 = source;
+            var value1 = getter.Get(value0);
+            var value2 = prism.Get(value1);
 
             return value2;
         });

@@ -469,13 +469,6 @@ public static class OptionalExtensions
         return newSource;
     }
 
-    public static Setter<T, TValue> ToSetter<T, TValue>(
-        this Optional<T, TValue> optional
-    )
-    {
-        return Setter<T, TValue>.Of(optional.Set);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
         this Optional<T, TValue> optional
     )
@@ -501,6 +494,13 @@ public static class OptionalExtensions
         return Getter<T, TValue>.Of(
             source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
         );
+    }
+
+    public static Setter<T, TValue> ToSetter<T, TValue>(
+        this Optional<T, TValue> optional
+    )
+    {
+        return Setter<T, TValue>.Of(optional.Set);
     }
 
     /// <summary>

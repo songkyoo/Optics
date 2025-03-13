@@ -252,11 +252,6 @@ public static class LensExtensions
         return newSource;
     }
 
-    public static Setter<T, TValue> ToSetter<T, TValue>(this Lens<T, TValue> lens)
-    {
-        return Setter<T, TValue>.Of(lens.Set);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(this Lens<T, TValue> lens)
     {
         return OptionalGetter<T, TValue>.Of(lens.Get);
@@ -265,6 +260,11 @@ public static class LensExtensions
     public static Getter<T, TValue> ToGetter<T, TValue>(this Lens<T, TValue> lens)
     {
         return Getter<T, TValue>.Of(lens.Get);
+    }
+
+    public static Setter<T, TValue> ToSetter<T, TValue>(this Lens<T, TValue> lens)
+    {
+        return Setter<T, TValue>.Of(lens.Set);
     }
 
     /// <summary>

@@ -6,34 +6,6 @@ namespace Macaron.Optics;
 
 public static class PrismExtensions
 {
-    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Prism<T, TValue1> prism,
-        Func<TValue2, TValue1> constructor
-    )
-    {
-        return Constructor<T, TValue2>.Of(value =>
-        {
-            var newValue1 = constructor.Invoke(value);
-            var newValue0 = prism.Construct(newValue1);
-
-            return newValue0;
-        });
-    }
-
-    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Prism<T, TValue1> prism,
-        Constructor<TValue1, TValue2> constructor
-    )
-    {
-        return Constructor<T, TValue2>.Of(value =>
-        {
-            var newValue1 = constructor.Construct(value);
-            var newValue0 = prism.Construct(newValue1);
-
-            return newValue0;
-        });
-    }
-
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Prism<T, TValue1> prism,
         Func<Maybe<TValue1>, Maybe<TValue2>> optionalGetter
@@ -91,6 +63,34 @@ public static class PrismExtensions
             var value2 = getter.Get(value1);
 
             return value2;
+        });
+    }
+
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Prism<T, TValue1> prism,
+        Func<TValue2, TValue1> constructor
+    )
+    {
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Invoke(value);
+            var newValue0 = prism.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Prism<T, TValue1> prism,
+        Constructor<TValue1, TValue2> constructor
+    )
+    {
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = prism.Construct(newValue1);
+
+            return newValue0;
         });
     }
 
@@ -221,13 +221,6 @@ public static class PrismExtensions
         );
     }
 
-    public static Constructor<T, TValue> ToConstructor<T, TValue>(
-        this Prism<T, TValue> prism
-    )
-    {
-        return Constructor<T, TValue>.Of(prism.Construct);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
         this Prism<T, TValue> prism
     )
@@ -253,6 +246,13 @@ public static class PrismExtensions
         return Getter<T, TValue>.Of(
             source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
         );
+    }
+
+    public static Constructor<T, TValue> ToConstructor<T, TValue>(
+        this Prism<T, TValue> prism
+    )
+    {
+        return Constructor<T, TValue>.Of(prism.Construct);
     }
 
     public static Iso<T, TValue> ToIso<T, TValue>(

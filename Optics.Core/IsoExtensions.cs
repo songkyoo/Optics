@@ -4,34 +4,6 @@ namespace Macaron.Optics;
 
 public static class IsoExtensions
 {
-    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Iso<T, TValue1> iso,
-        Func<TValue2, TValue1> constructor
-    )
-    {
-        return Constructor<T, TValue2>.Of(value =>
-        {
-            var newValue1 = constructor.Invoke(value);
-            var newValue0 = iso.Construct(newValue1);
-
-            return newValue0;
-        });
-    }
-
-    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
-        this Iso<T, TValue1> iso,
-        Constructor<TValue1, TValue2> constructor
-    )
-    {
-        return Constructor<T, TValue2>.Of(value =>
-        {
-            var newValue1 = constructor.Construct(value);
-            var newValue0 = iso.Construct(newValue1);
-
-            return newValue0;
-        });
-    }
-
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this Iso<T, TValue1> iso,
         Func<TValue1, Maybe<TValue2>> optionalGetter
@@ -89,6 +61,34 @@ public static class IsoExtensions
             var value2 = getter.Get(value1);
 
             return value2;
+        });
+    }
+
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Func<TValue2, TValue1> constructor
+    )
+    {
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Invoke(value);
+            var newValue0 = iso.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Constructor<TValue1, TValue2> constructor
+    )
+    {
+        return Constructor<T, TValue2>.Of(value =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = iso.Construct(newValue1);
+
+            return newValue0;
         });
     }
 
@@ -234,13 +234,6 @@ public static class IsoExtensions
         );
     }
 
-    public static Constructor<T, TValue> ToConstructor<T, TValue>(
-        this Iso<T, TValue> iso
-    )
-    {
-        return Constructor<T, TValue>.Of(iso.Construct);
-    }
-
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
         this Iso<T, TValue> iso
     )
@@ -253,6 +246,13 @@ public static class IsoExtensions
     )
     {
         return Getter<T, TValue>.Of(iso.Get);
+    }
+
+    public static Constructor<T, TValue> ToConstructor<T, TValue>(
+        this Iso<T, TValue> iso
+    )
+    {
+        return Constructor<T, TValue>.Of(iso.Construct);
     }
 
     public static Prism<T, TValue> ToPrism<T, TValue>(

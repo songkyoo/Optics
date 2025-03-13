@@ -126,6 +126,34 @@ public static class OptionalGetterExtensions
         });
     }
 
+    public static OptionalGetter<T, TValue2> Transform<T, TValue, TValue2>(
+        this OptionalGetter<T, TValue> optionalGetter,
+        Func<T, TValue, TValue2> mapGet
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1.IsJust ? Just(mapGet(source, value1.Value)) : Nothing();
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Transform<T, TValue, TValue2>(
+        this OptionalGetter<T, TValue> optionalGetter,
+        Func<TValue, TValue2> mapGet
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1.IsJust ? Just(mapGet(value1.Value)) : Nothing();
+
+            return value2;
+        });
+    }
+
     public static Getter<T, TValue> ToGetter<T, TValue>(
         this OptionalGetter<T, TValue> optional,
         Func<T, TValue> getDefaultValue

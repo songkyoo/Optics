@@ -32,6 +32,34 @@ public static class ConstructorExtensions
         });
     }
 
+    public static Constructor<TResult, TValue> Transform<T, TValue, TResult>(
+        this Constructor<T, TValue> constructor,
+        Func<TValue, T, TResult> mapConstruct
+    )
+    {
+        return Constructor<TResult, TValue>.Of(value =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = mapConstruct(value, newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Constructor<TResult, TValue> Transform<T, TValue, TResult>(
+        this Constructor<T, TValue> constructor,
+        Func<T, TResult> mapConstruct
+    )
+    {
+        return Constructor<TResult, TValue>.Of(value =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = mapConstruct(newValue1);
+
+            return newValue0;
+        });
+    }
+
     public static Prism<T, TValue> ToPrism<T, TValue>(
         this Constructor<T, TValue> constructor,
         Func<T, TValue> getter

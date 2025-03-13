@@ -124,6 +124,34 @@ public static class GetterExtensions
         });
     }
 
+    public static Getter<T, TValue2> Transform<T, TValue, TValue2>(
+        this Getter<T, TValue> getter,
+        Func<T, TValue, TValue2> mapGet
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value1 = getter.Get(source);
+            var value2 = mapGet(source, value1);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Transform<T, TValue, TValue2>(
+        this Getter<T, TValue> getter,
+        Func<TValue, TValue2> mapGet
+    )
+    {
+        return Getter<T, TValue2>.Of(source =>
+        {
+            var value1 = getter.Get(source);
+            var value2 = mapGet(value1);
+
+            return value2;
+        });
+    }
+
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(
         this Getter<T, TValue> getter
     )

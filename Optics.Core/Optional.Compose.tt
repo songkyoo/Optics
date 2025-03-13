@@ -100,8 +100,6 @@ partial class Optional
             }
         );
     }
-<# if (n < MaxCount) { #>
 
-<# } #>
 <# } #>
 }

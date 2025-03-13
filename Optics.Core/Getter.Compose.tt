@@ -27,8 +27,6 @@ partial class Getter
             }
         );
     }
-<# if (n < MaxCount) { #>
 
-<# } #>
 <# } #>
 }

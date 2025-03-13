@@ -41,8 +41,6 @@ partial class Lens
             }
         );
     }
-<# if (n < MaxCount) { #>
 
-<# } #>
 <# } #>
 }

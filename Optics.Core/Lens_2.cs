@@ -21,6 +21,12 @@ public readonly record struct Lens<T, TValue>(
     /// <returns><see cref="Lens{T,TValue}"/> 인스턴스.</returns>
     public static Lens<T, TValue> Of(Func<T, TValue> getter, Func<T, TValue, T> setter) => new(getter, setter);
 
+    /// <summary>
+    /// 지정된 <paramref name="getter"/>와 <paramref name="setter"/>로 <see cref="Lens{T,TValue}"/> 인스턴스를 생성한다.
+    /// </summary>
+    /// <param name="getter">값을 획득하는 <see cref="Getter{T,TValue}"/> 인스턴스.</param>
+    /// <param name="setter">값을 설정하는 <see cref="Setter{T,TValue}"/> 인스턴스.</param>
+    /// <returns><see cref="Lens{T,TValue}"/> 인스턴스.</returns>
     public static Lens<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter) =>
         new(getter.Get, setter.Set);
     #endregion

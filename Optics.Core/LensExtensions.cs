@@ -1,7 +1,5 @@
 using Macaron.Functional;
 
-using static Macaron.Functional.Maybe;
-
 namespace Macaron.Optics;
 
 public static class LensExtensions
@@ -11,7 +9,7 @@ public static class LensExtensions
         Func<TValue1, Maybe<TValue2>> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -26,7 +24,7 @@ public static class LensExtensions
         OptionalGetter<TValue1, TValue2> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -41,7 +39,7 @@ public static class LensExtensions
         Func<TValue1, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -56,7 +54,7 @@ public static class LensExtensions
         Getter<TValue1, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = lens.Get(value0);
@@ -254,17 +252,23 @@ public static class LensExtensions
 
     public static OptionalGetter<T, TValue> ToOptionalGetter<T, TValue>(this Lens<T, TValue> lens)
     {
-        return OptionalGetter<T, TValue>.Of(lens.Get);
+        return OptionalGetter<T, TValue>.Of(
+            getter: lens.Get
+        );
     }
 
     public static Getter<T, TValue> ToGetter<T, TValue>(this Lens<T, TValue> lens)
     {
-        return Getter<T, TValue>.Of(lens.Get);
+        return Getter<T, TValue>.Of(
+            getter: lens.Get
+        );
     }
 
     public static Setter<T, TValue> ToSetter<T, TValue>(this Lens<T, TValue> lens)
     {
-        return Setter<T, TValue>.Of(lens.Set);
+        return Setter<T, TValue>.Of(
+            setter: lens.Set
+        );
     }
 
     /// <summary>
@@ -277,8 +281,8 @@ public static class LensExtensions
     public static Optional<T, TValue> ToOptional<T, TValue>(this Lens<T, TValue> lens)
     {
         return Optional<T, TValue>.Of(
-            optionalGetter: source => Just(lens.Get(source)),
-            setter: (source, value) => lens.Set(source, value)
+            getter: lens.Get,
+            setter: lens.Set
         );
     }
 }

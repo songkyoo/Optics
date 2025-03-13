@@ -9,7 +9,7 @@ public static class IsoExtensions
         Func<TValue1, Maybe<TValue2>> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = iso.Get(value0);
@@ -24,7 +24,7 @@ public static class IsoExtensions
         OptionalGetter<TValue1, TValue2> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = iso.Get(value0);
@@ -39,7 +39,7 @@ public static class IsoExtensions
         Func<TValue1, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = iso.Get(value0);
@@ -54,7 +54,7 @@ public static class IsoExtensions
         Getter<TValue1, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = iso.Get(value0);
@@ -69,7 +69,7 @@ public static class IsoExtensions
         Func<TValue2, TValue1> constructor
     )
     {
-        return Constructor<T, TValue2>.Of(value =>
+        return Constructor<T, TValue2>.Of(constructor: value =>
         {
             var newValue1 = constructor.Invoke(value);
             var newValue0 = iso.Construct(newValue1);
@@ -83,7 +83,7 @@ public static class IsoExtensions
         Constructor<TValue1, TValue2> constructor
     )
     {
-        return Constructor<T, TValue2>.Of(value =>
+        return Constructor<T, TValue2>.Of(constructor: value =>
         {
             var newValue1 = constructor.Construct(value);
             var newValue0 = iso.Construct(newValue1);
@@ -238,21 +238,27 @@ public static class IsoExtensions
         this Iso<T, TValue> iso
     )
     {
-        return OptionalGetter<T, TValue>.Of(iso.Get);
+        return OptionalGetter<T, TValue>.Of(
+            getter: iso.Get
+        );
     }
 
     public static Getter<T, TValue> ToGetter<T, TValue>(
         this Iso<T, TValue> iso
     )
     {
-        return Getter<T, TValue>.Of(iso.Get);
+        return Getter<T, TValue>.Of(
+            getter: iso.Get
+        );
     }
 
     public static Constructor<T, TValue> ToConstructor<T, TValue>(
         this Iso<T, TValue> iso
     )
     {
-        return Constructor<T, TValue>.Of(iso.Construct);
+        return Constructor<T, TValue>.Of(
+            constructor: iso.Construct
+        );
     }
 
     public static Prism<T, TValue> ToPrism<T, TValue>(

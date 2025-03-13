@@ -9,7 +9,7 @@ public static class GetterExtensions
         Func<TValue1, Maybe<TValue2>> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -24,7 +24,7 @@ public static class GetterExtensions
         OptionalGetter<TValue1, TValue2> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -39,7 +39,7 @@ public static class GetterExtensions
         Func<TValue1, TValue2> getter2
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = getter1.Get(value0);
@@ -54,7 +54,7 @@ public static class GetterExtensions
         Getter<TValue1, TValue2> getter2
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = getter1.Get(value0);
@@ -69,7 +69,7 @@ public static class GetterExtensions
         Optional<TValue1, TValue2> optional
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -84,7 +84,7 @@ public static class GetterExtensions
         Lens<TValue1, TValue2> lens
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -99,7 +99,7 @@ public static class GetterExtensions
         Prism<TValue1, TValue2> prism
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -114,7 +114,7 @@ public static class GetterExtensions
         Iso<TValue1, TValue2> iso
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = getter.Get(value0);
@@ -129,7 +129,7 @@ public static class GetterExtensions
         Func<T, TValue, TValue2> mapGet
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value1 = getter.Get(source);
             var value2 = mapGet(source, value1);
@@ -143,7 +143,7 @@ public static class GetterExtensions
         Func<TValue, TValue2> mapGet
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value1 = getter.Get(source);
             var value2 = mapGet(value1);
@@ -156,7 +156,9 @@ public static class GetterExtensions
         this Getter<T, TValue> getter
     )
     {
-        return OptionalGetter<T, TValue>.Of(getter);
+        return OptionalGetter<T, TValue>.Of(
+            getter: getter
+        );
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(

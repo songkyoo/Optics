@@ -11,7 +11,7 @@ public static class PrismExtensions
         Func<Maybe<TValue1>, Maybe<TValue2>> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = prism.Get(value0);
@@ -26,7 +26,7 @@ public static class PrismExtensions
         OptionalGetter<Maybe<TValue1>, TValue2> optionalGetter
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = prism.Get(value0);
@@ -41,7 +41,7 @@ public static class PrismExtensions
         Func<Maybe<TValue1>, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = prism.Get(value0);
@@ -56,7 +56,7 @@ public static class PrismExtensions
         Getter<Maybe<TValue1>, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = prism.Get(value0);
@@ -71,7 +71,7 @@ public static class PrismExtensions
         Func<TValue2, TValue1> constructor
     )
     {
-        return Constructor<T, TValue2>.Of(value =>
+        return Constructor<T, TValue2>.Of(constructor: value =>
         {
             var newValue1 = constructor.Invoke(value);
             var newValue0 = prism.Construct(newValue1);
@@ -85,7 +85,7 @@ public static class PrismExtensions
         Constructor<TValue1, TValue2> constructor
     )
     {
-        return Constructor<T, TValue2>.Of(value =>
+        return Constructor<T, TValue2>.Of(constructor: value =>
         {
             var newValue1 = constructor.Construct(value);
             var newValue0 = prism.Construct(newValue1);
@@ -110,11 +110,10 @@ public static class PrismExtensions
             },
             constructor: value =>
             {
-                var value0 = value;
-                var value1 = prism2.Construct(value0);
-                var value2 = prism1.Construct(value1);
+                var newValue1 = prism2.Construct(value);
+                var newValue0 = prism1.Construct(newValue1);
 
-                return value2;
+                return newValue0;
             }
         );
     }
@@ -126,7 +125,7 @@ public static class PrismExtensions
     )
     {
         return Iso<T, TValue2>.Of(
-            source =>
+            getter: source =>
             {
                 var value0 = source;
                 var value1 = prism.Get(value0) is { IsJust: true } just ? just.Value : getDefaultValue(value0);
@@ -134,13 +133,12 @@ public static class PrismExtensions
 
                 return value2;
             },
-            value =>
+            constructor: value =>
             {
-                var value0 = value;
-                var value1 = iso.Construct(value0);
-                var value2 = prism.Construct(value1);
+                var newValue1 = iso.Construct(value);
+                var newValue0 = prism.Construct(newValue1);
 
-                return value2;
+                return newValue0;
             }
         );
     }
@@ -152,7 +150,7 @@ public static class PrismExtensions
     )
     {
         return Iso<T, TValue2>.Of(
-            source =>
+            getter: source =>
             {
                 var value0 = source;
                 var value1 = prism.Get(value0) is { IsJust: true } just ? just.Value : getDefaultValue();
@@ -160,13 +158,12 @@ public static class PrismExtensions
 
                 return value2;
             },
-            value =>
+            constructor: value =>
             {
-                var value0 = value;
-                var value1 = iso.Construct(value0);
-                var value2 = prism.Construct(value1);
+                var newValue1 = iso.Construct(value);
+                var newValue0 = prism.Construct(newValue1);
 
-                return value2;
+                return newValue0;
             }
         );
     }
@@ -225,7 +222,7 @@ public static class PrismExtensions
         this Prism<T, TValue> prism
     )
     {
-        return OptionalGetter<T, TValue>.Of(prism.Get);
+        return OptionalGetter<T, TValue>.Of(optionalGetter: prism.Get);
     }
 
     public static Getter<T, TValue> ToGetter<T, TValue>(
@@ -234,7 +231,7 @@ public static class PrismExtensions
     )
     {
         return Getter<T, TValue>.Of(
-            source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source)
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source)
         );
     }
 
@@ -244,7 +241,7 @@ public static class PrismExtensions
     )
     {
         return Getter<T, TValue>.Of(
-            source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
         );
     }
 
@@ -252,7 +249,7 @@ public static class PrismExtensions
         this Prism<T, TValue> prism
     )
     {
-        return Constructor<T, TValue>.Of(prism.Construct);
+        return Constructor<T, TValue>.Of(constructor: prism.Construct);
     }
 
     public static Iso<T, TValue> ToIso<T, TValue>(
@@ -261,8 +258,8 @@ public static class PrismExtensions
     )
     {
         return Iso<T, TValue>.Of(
-            source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source),
-            prism.Construct
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source),
+            constructor: prism.Construct
         );
     }
 
@@ -272,8 +269,8 @@ public static class PrismExtensions
     )
     {
         return Iso<T, TValue>.Of(
-            source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),
-            prism.Construct
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),
+            constructor: prism.Construct
         );
     }
 }

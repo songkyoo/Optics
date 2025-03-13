@@ -11,7 +11,7 @@ public static class OptionalGetterExtensions
         Func<Maybe<TValue1>, Maybe<TValue2>> optionalGetter2
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter1.Get(value0);
@@ -26,7 +26,7 @@ public static class OptionalGetterExtensions
         OptionalGetter<Maybe<TValue1>, TValue2> optionalGetter2
     )
     {
-        return OptionalGetter.Of<T, TValue2>(source =>
+        return OptionalGetter.Of<T, TValue2>(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter1.Get(value0);
@@ -41,7 +41,7 @@ public static class OptionalGetterExtensions
         Func<Maybe<TValue1>, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -56,7 +56,7 @@ public static class OptionalGetterExtensions
         Getter<Maybe<TValue1>, TValue2> getter
     )
     {
-        return Getter<T, TValue2>.Of(source =>
+        return Getter<T, TValue2>.Of(getter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -71,7 +71,7 @@ public static class OptionalGetterExtensions
         Optional<TValue1, TValue2> optional
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -86,7 +86,7 @@ public static class OptionalGetterExtensions
         Lens<TValue1, TValue2> lens
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -101,7 +101,7 @@ public static class OptionalGetterExtensions
         Prism<TValue1, TValue2> prism
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -116,7 +116,7 @@ public static class OptionalGetterExtensions
         Iso<TValue1, TValue2> iso
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
@@ -131,7 +131,7 @@ public static class OptionalGetterExtensions
         Func<T, TValue, TValue2> mapGet
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value1 = optionalGetter.Get(source);
             var value2 = value1.IsJust ? Just(mapGet(source, value1.Value)) : Nothing();
@@ -145,7 +145,7 @@ public static class OptionalGetterExtensions
         Func<TValue, TValue2> mapGet
     )
     {
-        return OptionalGetter<T, TValue2>.Of(source =>
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
         {
             var value1 = optionalGetter.Get(source);
             var value2 = value1.IsJust ? Just(mapGet(value1.Value)) : Nothing();
@@ -160,7 +160,7 @@ public static class OptionalGetterExtensions
     )
     {
         return Getter<T, TValue>.Of(
-            source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source)
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(source)
         );
     }
 
@@ -170,7 +170,7 @@ public static class OptionalGetterExtensions
     )
     {
         return Getter<T, TValue>.Of(
-            source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue()
         );
     }
 
@@ -179,7 +179,10 @@ public static class OptionalGetterExtensions
         Func<T, TValue, T> setter
     )
     {
-        return Optional<T, TValue>.Of(optionalGetter.Get, setter);
+        return Optional<T, TValue>.Of(
+            optionalGetter: optionalGetter.Get,
+            setter: setter
+        );
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(
@@ -187,7 +190,10 @@ public static class OptionalGetterExtensions
         Setter<T, TValue> setter
     )
     {
-        return Optional<T, TValue>.Of(optionalGetter, setter);
+        return Optional<T, TValue>.Of(
+            optionalGetter: optionalGetter,
+            setter: setter
+        );
     }
 
     public static Lens<T, TValue> ToLens<T, TValue>(
@@ -251,7 +257,10 @@ public static class OptionalGetterExtensions
         Func<TValue, T> constructor
     )
     {
-        return Prism<T, TValue>.Of(optionalGetter.Get, constructor);
+        return Prism<T, TValue>.Of(
+            optionalGetter: optionalGetter.Get,
+            constructor: constructor
+        );
     }
 
     public static Prism<T, TValue> ToPrism<T, TValue>(
@@ -259,7 +268,10 @@ public static class OptionalGetterExtensions
         Constructor<T, TValue> constructor
     )
     {
-        return Prism<T, TValue>.Of(optionalGetter, constructor);
+        return Prism<T, TValue>.Of(
+            optionalGetter: optionalGetter,
+            constructor: constructor
+        );
     }
 
     public static Iso<T, TValue> ToIso<T, TValue>(

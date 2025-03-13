@@ -9,7 +9,7 @@ public static class SetterExtensions
         Func<T, TValue, TValue> mapSet
     )
     {
-        return Setter<T, TValue>.Of((source, value) =>
+        return Setter<T, TValue>.Of(setter: (source, value) =>
         {
             var newValue1 = mapSet(source, value);
             var newValue0 = setter.Set(source, newValue1);
@@ -23,7 +23,7 @@ public static class SetterExtensions
         Func<TValue, TValue> mapSet
     )
     {
-        return Setter<T, TValue>.Of((source, value) =>
+        return Setter<T, TValue>.Of(setter: (source, value) =>
         {
             var newValue1 = mapSet(value);
             var newValue0 = setter.Set(source, newValue1);
@@ -37,7 +37,10 @@ public static class SetterExtensions
         Func<T, Maybe<TValue>> optionalGetter
     )
     {
-        return Optional<T, TValue>.Of(optionalGetter, setter.Set);
+        return Optional<T, TValue>.Of(
+            optionalGetter: optionalGetter,
+            setter: setter.Set
+        );
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(
@@ -45,7 +48,10 @@ public static class SetterExtensions
         OptionalGetter<T, TValue> optionalGetter
     )
     {
-        return Optional<T, TValue>.Of(optionalGetter.Get, setter.Set);
+        return Optional<T, TValue>.Of(
+            optionalGetter: optionalGetter,
+            setter: setter
+        );
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(
@@ -53,7 +59,10 @@ public static class SetterExtensions
         Func<T, TValue> getter
     )
     {
-        return Optional<T, TValue>.Of(getter, setter.Set);
+        return Optional<T, TValue>.Of(
+            getter: getter,
+            setter: setter.Set
+        );
     }
 
     public static Optional<T, TValue> ToOptional<T, TValue>(
@@ -61,7 +70,10 @@ public static class SetterExtensions
         Getter<T, TValue> getter
     )
     {
-        return Optional<T, TValue>.Of(getter.Get, setter.Set);
+        return Optional<T, TValue>.Of(
+            getter: getter,
+            setter: setter
+        );
     }
 
     public static Lens<T, TValue> ToLens<T, TValue>(
@@ -69,7 +81,10 @@ public static class SetterExtensions
         Func<T, TValue> getter
     )
     {
-        return Lens<T, TValue>.Of(getter, setter.Set);
+        return Lens<T, TValue>.Of(
+            getter: getter,
+            setter: setter.Set
+        );
     }
 
     public static Lens<T, TValue> ToLens<T, TValue>(
@@ -77,6 +92,9 @@ public static class SetterExtensions
         Getter<T, TValue> getter
     )
     {
-        return Lens<T, TValue>.Of(getter.Get, setter.Set);
+        return Lens<T, TValue>.Of(
+            getter: getter,
+            setter: setter
+        );
     }
 }

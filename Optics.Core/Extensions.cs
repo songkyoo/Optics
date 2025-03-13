@@ -68,12 +68,18 @@ public static class Extensions
         );
     }
 
-    public static Lens<T, TValue> OrElse<T, TValue>(this Optional<T, TValue> optional, Func<T, TValue> getDefaultValue)
+    public static Lens<T, TValue> OrElse<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<T, TValue> getDefaultValue
+    )
     {
         return optional.ToLens(getDefaultValue);
     }
 
-    public static Lens<T, TValue> OrElse<T, TValue>(this Optional<T, TValue> optional, Func<TValue> getDefaultValue)
+    public static Lens<T, TValue> OrElse<T, TValue>(
+        this Optional<T, TValue> optional,
+        Func<TValue> getDefaultValue
+    )
     {
         return optional.ToLens(getDefaultValue);
     }

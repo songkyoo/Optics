@@ -28,7 +28,7 @@ public class OptionalGenerator : IIncrementalGenerator
 
         var optionalOfStringBuilder = new StringBuilder();
 
-        optionalOfStringBuilder.AppendLine($"    public static class OptionalOfExtensions");
+        optionalOfStringBuilder.AppendLine($"    internal static class OptionalOfExtensions");
         optionalOfStringBuilder.AppendLine("    {");
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)

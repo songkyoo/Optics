@@ -28,7 +28,7 @@ public class LensGenerator : IIncrementalGenerator
 
         var lensOfStringBuilder = new StringBuilder();
 
-        lensOfStringBuilder.AppendLine($"    public static class LensOfExtensions");
+        lensOfStringBuilder.AppendLine($"    internal static class LensOfExtensions");
         lensOfStringBuilder.AppendLine("    {");
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)

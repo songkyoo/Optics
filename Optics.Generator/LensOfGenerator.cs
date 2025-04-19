@@ -14,22 +14,14 @@ public class LensOfGenerator : IIncrementalGenerator
     private const string LensOfAttributeName = "global::Macaron.Optics.LensOfAttribute";
     #endregion
 
-    #region IIncrementalGenerator Interface
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
-        var classDeclarations = context
-            .SyntaxProvider
-            .CreateSyntaxProvider(
-                predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
-                transform: static (context, _) => GetClassWithLensOfAttribute(context)
-            )
-            .Where(static classDeclaration => classDeclaration is not null);
+    #region Types
+    private sealed record LensOfContext(
+        INamedTypeSymbol ContainingTypeSymbol,
+        INamedTypeSymbol TargetTypeSymbol
+    );
+    #endregion
 
-        context.RegisterSourceOutput(classDeclarations, Generate!);
-    }
-
-    private sealed record LensOfContext(INamedTypeSymbol ContainingTypeSymbol, INamedTypeSymbol TargetTypeSymbol);
-
+    #region Static
     private static LensOfContext? GetClassWithLensOfAttribute(GeneratorSyntaxContext context)
     {
         var typeDeclaration = (TypeDeclarationSyntax)context.Node;
@@ -69,9 +61,9 @@ public class LensOfGenerator : IIncrementalGenerator
         var (containingTypeSymbol, targetTypeSymbol) = lensOfContext;
         var stringBuilder = CreateStringBuilderWithFileHeader();
 
-        // namespace
-        stringBuilder.AppendLine($"namespace {containingTypeSymbol.ContainingNamespace.ToDisplayString()};");
-        stringBuilder.AppendLine($"");
+        // begin namespace
+        stringBuilder.AppendLine($"namespace {containingTypeSymbol.ContainingNamespace.ToDisplayString()}");
+        stringBuilder.AppendLine($"{{");
 
         // get nestedTypes
         var nestedTypes = new List<INamedTypeSymbol>();
@@ -82,7 +74,7 @@ public class LensOfGenerator : IIncrementalGenerator
             parentType = parentType.ContainingType;
         }
 
-        var depthSpacerText = "";
+        var depthSpacerText = "    ";
 
         // begin nestedTypes
         for (var i = nestedTypes.Count - 1; i >= 0; --i)
@@ -132,6 +124,9 @@ public class LensOfGenerator : IIncrementalGenerator
             stringBuilder.AppendLine($"{depthSpacerText}}}");
         }
 
+        // end namespace
+        stringBuilder.AppendLine($"}}");
+
         sourceProductionContext.AddSource(
             hintName: GetHintName(targetTypeSymbol),
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
@@ -174,6 +169,21 @@ public class LensOfGenerator : IIncrementalGenerator
             return $"{hashString}_{typeSymbol.Name}_{typeSymbol.Arity}.g.cs";
         }
         #endregion
+    }
+    #endregion
+
+    #region IIncrementalGenerator Interface
+    public void Initialize(IncrementalGeneratorInitializationContext context)
+    {
+        var classDeclarations = context
+            .SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
+                transform: static (context, _) => GetClassWithLensOfAttribute(context)
+            )
+            .Where(static classDeclaration => classDeclaration is not null);
+
+        context.RegisterSourceOutput(classDeclarations, Generate!);
     }
     #endregion
 }

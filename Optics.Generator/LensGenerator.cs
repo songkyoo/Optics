@@ -11,10 +11,11 @@ namespace Macaron.Optics.Generator;
 [Generator]
 public class LensGenerator : IIncrementalGenerator
 {
-    #region Static
-    private const string LensTypeName = "global::Macaron.Optics.Lens";
+    #region Constants
     private const string LensOfTypeName = "global::Macaron.Optics.LensOf";
+    #endregion
 
+    #region Static
     private static void GenerateSource(
         SourceProductionContext sourceProductionContext,
         ImmutableArray<INamedTypeSymbol> lensTypeSymbols
@@ -26,84 +27,66 @@ public class LensGenerator : IIncrementalGenerator
             return;
         }
 
-        var lensOfStringBuilder = new StringBuilder();
+        var stringBuilder = CreateStringBuilderWithFileHeader();
 
-        lensOfStringBuilder.AppendLine($"    internal static class LensOfExtensions");
-        lensOfStringBuilder.AppendLine("    {");
+        // begin namespace
+        stringBuilder.AppendLine("namespace Macaron.Optics");
+        stringBuilder.AppendLine("{");
+
+        // begin extension methods
+        stringBuilder.AppendLine($"    internal static class LensOfExtensions");
+        stringBuilder.AppendLine($"    {{");
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
         {
             var typeSymbol = uniqueTypeSymbols[i];
-            var members = typeSymbol
-                .GetMembers()
-                .Where(symbol => symbol.DeclaredAccessibility == Accessibility.Public)
-                .Where(symbol =>
-                    (symbol is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
-                    (symbol is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
-                )
-                .ToArray();
+
+            var members = GenerateLensOfMembers(typeSymbol);
             if (members.Length == 0)
             {
                 continue;
             }
 
             var typeName = ToFullyQualifiedName(typeSymbol)!;
-
-            for (int j = 0; j < members.Length; ++j)
+            for (var j = 0; j < members.Length; ++j)
             {
-                var member = members[j];
-                var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
-                    ? propertySymbol.Type
-                    : ((IFieldSymbol)member).Type
-                );
+                var (memberDeclaration, lines) = members[j];
 
-                lensOfStringBuilder.AppendLine($"       public static {LensTypeName}<{typeName}, {memberTypeName}> {member.Name}(");
-                lensOfStringBuilder.AppendLine($"           this {LensOfTypeName}<{typeName}> lensOf");
-                lensOfStringBuilder.AppendLine("       )");
-                lensOfStringBuilder.AppendLine("       {");
-                lensOfStringBuilder.AppendLine($"           return {LensTypeName}<{typeName}, {memberTypeName}>.Of(");
-                lensOfStringBuilder.AppendLine($"               getter: static source => source.{member.Name},");
-                lensOfStringBuilder.AppendLine($"               setter: static (source, value) => source with");
-                lensOfStringBuilder.AppendLine("               {");
-                lensOfStringBuilder.AppendLine($"                   {member.Name} = value,");
-                lensOfStringBuilder.AppendLine("               }");
-                lensOfStringBuilder.AppendLine("           );");
-                lensOfStringBuilder.AppendLine("       }");
+                stringBuilder.AppendLine($"        public static {memberDeclaration}(");
+                stringBuilder.AppendLine($"            this {LensOfTypeName}<{typeName}> lensOf");
+                stringBuilder.AppendLine($"        )");
+                stringBuilder.AppendLine($"        {{");
+
+                stringBuilder.AppendLine($"            return {lines[0]}");
+                foreach (var line in lines.Skip(1))
+                {
+                    stringBuilder.AppendLine($"            {line}");
+                }
+
+                stringBuilder.AppendLine($"        }}");
 
                 if (j < members.Length - 1)
                 {
-                    lensOfStringBuilder.AppendLine();
+                    stringBuilder.AppendLine();
                 }
             }
 
             if (i < uniqueTypeSymbols.Length - 1)
             {
-                lensOfStringBuilder.AppendLine();
+                stringBuilder.AppendLine();
             }
         }
 
-        lensOfStringBuilder.AppendLine("    }");
+        // end extension methods
+        stringBuilder.AppendLine($"    }}");
 
-        AddSource(sourceProductionContext, "LensOfExtensions.g.cs", lensOfStringBuilder.ToString());
+        // end namespace
+        stringBuilder.AppendLine($"}}");
 
-        #region Local Functions
-        static void AddSource(SourceProductionContext sourceProductionContext, string hintName, string sourceText)
-        {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.AppendLine("// <auto-generated />");
-            stringBuilder.AppendLine("#nullable enable");
-            stringBuilder.AppendLine();
-            stringBuilder.AppendLine($"namespace Macaron.Optics");
-            stringBuilder.AppendLine("{");
-            stringBuilder.Append(sourceText);
-            stringBuilder.AppendLine("}");
-
-            sourceProductionContext.AddSource(
-                hintName: hintName,
-                sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
-            );
-        }
-        #endregion
+        sourceProductionContext.AddSource(
+            hintName: "LensOfExtensions.g.cs",
+            sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
+        );
     }
     #endregion
 

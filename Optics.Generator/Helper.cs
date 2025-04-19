@@ -9,9 +9,9 @@ namespace Macaron.Optics.Generator;
 internal static class Helper
 {
     #region Constants
-    public const string MaybeTypeName = "global::Macaron.Functional.Maybe";
     public const string LensTypeName = "global::Macaron.Optics.Lens";
     public const string OptionalTypeName = "global::Macaron.Optics.Optional";
+    private const string MaybeTypeName = "global::Macaron.Functional.Maybe";
     #endregion
 
     #region Types
@@ -112,107 +112,127 @@ internal static class Helper
         );
     }
 
-    public static ImmutableArray<(string, string[])> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
+    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
     {
-        var members = typeSymbol
-            .GetMembers()
-            .Where(symbol => symbol.DeclaredAccessibility == Accessibility.Public)
-            .Where(symbol =>
-                (symbol is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
-                (symbol is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
-            )
-            .ToArray();
-        if (members.Length == 0)
+        return GenerateLensOfMembers(typeSymbol, getSourceByMember: (typeName, memberTypeName, memberName) =>
         {
-            return ImmutableArray<(string, string[])>.Empty;
-        }
-
-        var builder = ImmutableArray.CreateBuilder<(string, string[])>();
-        var typeName = ToFullyQualifiedName(typeSymbol)!;
-
-        for (int j = 0; j < members.Length; ++j)
-        {
-            var member = members[j];
-            var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
-                ? propertySymbol.Type
-                : ((IFieldSymbol)member).Type
-            );
-
             var lines = new List<string>
             {
                 $"{LensTypeName}<{typeName}, {memberTypeName}>.Of(",
-                $"    getter: static source => source.{member.Name},",
+                $"    getter: static source => source.{memberName},",
                 $"    setter: static (source, value) => source with",
                 $"    {{",
-                $"        {member.Name} = value,",
+                $"        {memberName} = value,",
                 $"    }}",
-                $");"
+                $");",
             };
 
-            builder.Add(($"{LensTypeName}<{typeName}, {memberTypeName}> {member.Name}", lines.ToArray()));
-        }
-
-        return builder.ToImmutable();
+            return ($"{LensTypeName}<{typeName}, {memberTypeName}> {memberName}", lines.ToImmutableArray());
+        });
     }
 
-    public static ImmutableArray<(string, string[])> GenerateOptionalOfMembers(INamedTypeSymbol typeSymbol)
+    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(INamedTypeSymbol typeSymbol)
     {
-        var members = GetValidMemberSymbols(typeSymbol);
-        if (members.Length == 0)
+        return GenerateLensOfMembers(typeSymbol, getSourceByMember: (typeName, memberTypeName, memberName) =>
         {
-            return ImmutableArray<(string, string[])>.Empty;
-        }
-
-        var builder = ImmutableArray.CreateBuilder<(string, string[])>();
-        var typeName = ToFullyQualifiedName(typeSymbol)!;
-
-        foreach (var member in members)
-        {
-            var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
-                ? propertySymbol.Type
-                : ((IFieldSymbol)member).Type
-            );
-
-            var lines = new List<string>
-            {
+            var lines = ImmutableArray.Create(
                 $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(",
                 $"    optionalGetter: static source => source.IsJust",
-                $"        ? {MaybeTypeName}.Just(source.Value.{member.Name})",
+                $"        ? {MaybeTypeName}.Just(source.Value.{memberName})",
                 $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
                 $"    setter: static (source, value) => source.IsJust",
                 $"        ? {MaybeTypeName}.Just(source.Value with",
                 $"        {{",
-                $"            {member.Name} = value,",
+                $"            {memberName} = value,",
                 $"        }})",
                 $"        : {MaybeTypeName}.Nothing<{typeName}>()",
-                $");",
-            };
+                $");"
+            );
 
-            builder.Add(($"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {member.Name}", lines.ToArray()));
+            return ($"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {memberName}", lines);
+        });
+    }
+
+    public static void AddSource(
+        SourceProductionContext sourceProductionContext,
+        string lensOfTypeName,
+        ImmutableArray<INamedTypeSymbol> lensTypeSymbols,
+        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
+    )
+    {
+        var uniqueTypeSymbols = lensTypeSymbols.Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default).ToArray();
+        if (uniqueTypeSymbols.Length == 0)
+        {
+            return;
         }
 
-        return builder.ToImmutable();
-    }
+        var stringBuilder = CreateStringBuilderWithFileHeader();
 
-    public static StringBuilder CreateStringBuilderWithFileHeader()
-    {
-        var stringBuilder = new StringBuilder();
-        stringBuilder.AppendLine("// <auto-generated />");
-        stringBuilder.AppendLine("#nullable enable");
-        stringBuilder.AppendLine();
+        // begin namespace
+        stringBuilder.AppendLine("namespace Macaron.Optics");
+        stringBuilder.AppendLine("{");
 
-        return stringBuilder;
-    }
+        // begin extension methods
+        stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
+        stringBuilder.AppendLine($"    {{");
 
-    public static string? ToFullyQualifiedName(ISymbol? symbol)
-    {
-        return symbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
+        {
+            var typeSymbol = uniqueTypeSymbols[i];
+
+            var members = generateLensOfMembers(typeSymbol);
+            if (members.Length == 0)
+            {
+                continue;
+            }
+
+            var typeName = ToFullyQualifiedName(typeSymbol)!;
+
+            for (int j = 0; j < members.Length; ++j)
+            {
+                var (memberDeclaration, lines) = members[j];
+
+                stringBuilder.AppendLine($"        public static {memberDeclaration}(");
+                stringBuilder.AppendLine($"            this {lensOfTypeName}<{typeName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
+                stringBuilder.AppendLine($"        )");
+                stringBuilder.AppendLine($"        {{");
+
+                stringBuilder.AppendLine($"            return {lines[0]}");
+                foreach (var line in lines.Skip(1))
+                {
+                    stringBuilder.AppendLine($"            {line}");
+                }
+
+                stringBuilder.AppendLine($"        }}");
+
+                if (j < members.Length - 1)
+                {
+                    stringBuilder.AppendLine();
+                }
+            }
+
+            if (i < uniqueTypeSymbols.Length - 1)
+            {
+                stringBuilder.AppendLine();
+            }
+        }
+
+        // end extension methods
+        stringBuilder.AppendLine("    }");
+
+        // end namespace
+        stringBuilder.AppendLine("}");
+
+        sourceProductionContext.AddSource(
+            hintName: $"{lensOfTypeName}Extensions.g.cs",
+            sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
+        );
     }
 
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
         LensOfContext lensOfContext,
-        Func<INamedTypeSymbol, ImmutableArray<(string, string[])>> generateLensOfMembers
+        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
     )
     {
         var (containingTypeSymbol, targetTypeSymbol) = lensOfContext;
@@ -328,7 +348,33 @@ internal static class Helper
         #endregion
     }
 
-    public static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
+    private static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
+        INamedTypeSymbol typeSymbol,
+        Func<string, string, string, (string, ImmutableArray<string>)> getSourceByMember
+    )
+    {
+        var members = GetValidMemberSymbols(typeSymbol);
+        if (members.Length == 0)
+        {
+            return ImmutableArray<(string, ImmutableArray<string>)>.Empty;
+        }
+
+        var builder = ImmutableArray.CreateBuilder<(string, ImmutableArray<string>)>();
+        var typeName = ToFullyQualifiedName(typeSymbol)!;
+
+        foreach (var member in members)
+        {
+            var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
+                ? propertySymbol.Type
+                : ((IFieldSymbol)member).Type
+            );
+            builder.Add(getSourceByMember(typeName, memberTypeName!, member.Name));
+        }
+
+        return builder.ToImmutable();
+    }
+
+    private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
     {
         return typeSymbol
             .GetMembers()
@@ -340,7 +386,7 @@ internal static class Helper
             .ToImmutableArray();
     }
 
-    public static bool IsValidProperty(IPropertySymbol propertySymbol)
+    private static bool IsValidProperty(IPropertySymbol propertySymbol)
     {
         if (propertySymbol.NullableAnnotation == NullableAnnotation.Annotated ||
             propertySymbol.GetMethod is null ||
@@ -353,12 +399,28 @@ internal static class Helper
         return propertySymbol.SetMethod is not null or { IsReadOnly: true };
     }
 
-    public static bool IsValidField(IFieldSymbol fieldSymbol)
+    private static bool IsValidField(IFieldSymbol fieldSymbol)
     {
-        return !fieldSymbol.IsConst &&
+        return
+            !fieldSymbol.IsConst &&
             !fieldSymbol.IsStatic &&
             !fieldSymbol.IsReadOnly &&
             fieldSymbol.NullableAnnotation != NullableAnnotation.Annotated;
+    }
+
+    private static StringBuilder CreateStringBuilderWithFileHeader()
+    {
+        var stringBuilder = new StringBuilder();
+        stringBuilder.AppendLine("// <auto-generated />");
+        stringBuilder.AppendLine("#nullable enable");
+        stringBuilder.AppendLine();
+
+        return stringBuilder;
+    }
+
+    private static string? ToFullyQualifiedName(ISymbol? symbol)
+    {
+        return symbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
     }
     #endregion
 }

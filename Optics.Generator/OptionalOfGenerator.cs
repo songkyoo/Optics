@@ -23,10 +23,14 @@ public class OptionalOfGenerator : IIncrementalGenerator
             )
             .Where(static classDeclaration => classDeclaration is not null);
 
-        context.RegisterSourceOutput(classDeclarations, (sourceProductionContext, lensOfContext) =>
-        {
-            AddSource(sourceProductionContext, lensOfContext!, GenerateOptionalOfMembers);
-        });
+        context.RegisterSourceOutput(
+            source: classDeclarations,
+            action: (sourceProductionContext, lensOfContext) => AddSource(
+                sourceProductionContext: sourceProductionContext,
+                lensOfContext: lensOfContext!,
+                generateLensOfMembers: GenerateOptionalOfMembers
+            )
+        );
     }
     #endregion
 }

@@ -12,6 +12,6 @@ public class LensOfAttribute : Attribute
 
     public LensOfAttribute(Type targetType)
     {
-        TargetType = targetType ?? throw new ArgumentNullException(nameof(targetType));
+        TargetType = targetType;
     }
 }

@@ -4,9 +4,9 @@ using static Macaron.Functional.Maybe;
 
 namespace Macaron.Optics;
 
-public readonly record struct Prism<T, TValue>(
-    Func<T, Maybe<TValue>> Get,
-    Func<TValue, T> Construct
+public readonly struct Prism<T, TValue>(
+    Func<T, Maybe<TValue>> get,
+    Func<TValue, T> construct
 )
 {
     #region Static
@@ -21,5 +21,11 @@ public readonly record struct Prism<T, TValue>(
 
     public static Prism<T, TValue> Of(Getter<T, TValue> getter, Constructor<T, TValue> constructor) =>
         new(source => Just(getter.Get(source)), constructor.Construct);
+    #endregion
+
+    #region Methods
+    public Maybe<TValue> Get(T source) => get.Invoke(source);
+
+    public T Construct(TValue value) => construct.Invoke(value);
     #endregion
 }

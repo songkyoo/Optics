@@ -4,9 +4,9 @@ using static Macaron.Functional.Maybe;
 
 namespace Macaron.Optics;
 
-public readonly record struct Optional<T, TValue>(
-    Func<T, Maybe<TValue>> Get,
-    Func<T, TValue, T> Set
+public readonly struct Optional<T, TValue>(
+    Func<T, Maybe<TValue>> get,
+    Func<T, TValue, T> set
 )
 {
     #region Static
@@ -21,5 +21,11 @@ public readonly record struct Optional<T, TValue>(
 
     public static Optional<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter) =>
         new(source => Just(getter.Get(source)), setter.Set);
+    #endregion
+
+    #region Methods
+    public Maybe<TValue> Get(T source) => get.Invoke(source);
+
+    public T Set(T source, TValue value) => set.Invoke(source, value);
     #endregion
 }

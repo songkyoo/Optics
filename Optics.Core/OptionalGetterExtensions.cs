@@ -174,6 +174,16 @@ public static class OptionalGetterExtensions
         );
     }
 
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this OptionalGetter<T, TValue> optional,
+        TValue defaultValue
+    )
+    {
+        return Getter<T, TValue>.Of(
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : defaultValue
+        );
+    }
+
     public static Optional<T, TValue> ToOptional<T, TValue>(
         this OptionalGetter<T, TValue> optionalGetter,
         Func<T, TValue, T> setter
@@ -226,6 +236,20 @@ public static class OptionalGetterExtensions
 
     public static Lens<T, TValue> ToLens<T, TValue>(
         this OptionalGetter<T, TValue> optionalGetter,
+        Func<T, TValue, T> setter,
+        TValue defaultValue
+    )
+    {
+        return Lens<T, TValue>.Of(
+            getter: source => optionalGetter.Get(source) is { IsJust: true } just
+                ? just.Value
+                : defaultValue,
+            setter: setter
+        );
+    }
+
+    public static Lens<T, TValue> ToLens<T, TValue>(
+        this OptionalGetter<T, TValue> optionalGetter,
         Setter<T, TValue> setter,
         Func<T, TValue> getDefaultValue
     )
@@ -248,6 +272,20 @@ public static class OptionalGetterExtensions
             getter: source => optionalGetter.Get(source) is { IsJust: true } just
                 ? just.Value
                 : getDefaultValue(),
+            setter: setter.Set
+        );
+    }
+
+    public static Lens<T, TValue> ToLens<T, TValue>(
+        this OptionalGetter<T, TValue> optionalGetter,
+        Setter<T, TValue> setter,
+        TValue defaultValue
+    )
+    {
+        return Lens<T, TValue>.Of(
+            getter: source => optionalGetter.Get(source) is { IsJust: true } just
+                ? just.Value
+                : defaultValue,
             setter: setter.Set
         );
     }
@@ -304,6 +342,20 @@ public static class OptionalGetterExtensions
 
     public static Iso<T, TValue> ToIso<T, TValue>(
         this OptionalGetter<T, TValue> optionalGetter,
+        Func<TValue, T> constructor,
+        TValue defaultValue
+    )
+    {
+        return Iso<T, TValue>.Of(
+            getter: source => optionalGetter.Get(source) is { IsJust: true } just
+                ? just.Value
+                : defaultValue,
+            constructor: constructor
+        );
+    }
+
+    public static Iso<T, TValue> ToIso<T, TValue>(
+        this OptionalGetter<T, TValue> optionalGetter,
         Constructor<T, TValue> constructor,
         Func<T, TValue> getDefaultValue
     )
@@ -326,6 +378,20 @@ public static class OptionalGetterExtensions
             getter: source => optionalGetter.Get(source) is { IsJust: true } just
                 ? just.Value
                 : getDefaultValue(),
+            constructor: constructor.Construct
+        );
+    }
+
+    public static Iso<T, TValue> ToIso<T, TValue>(
+        this OptionalGetter<T, TValue> optionalGetter,
+        Constructor<T, TValue> constructor,
+        TValue defaultValue
+    )
+    {
+        return Iso<T, TValue>.Of(
+            getter: source => optionalGetter.Get(source) is { IsJust: true } just
+                ? just.Value
+                : defaultValue,
             constructor: constructor.Construct
         );
     }

@@ -214,6 +214,39 @@ public static class OptionalExtensions
     }
 
     public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<T, TValue1> optional,
+        Lens<TValue1, TValue2> lens,
+        TValue1 defaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(value0);
+                var value2 = lens.Get(value1.GetOrElse(defaultValue));
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(value0);
+
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
+                var newValue0 = optional.Set(source, newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
         this Optional<Maybe<T>, TValue1> optional,
         Lens<TValue1, TValue2> lens,
         Func<T, TValue1> getDefaultValue
@@ -224,7 +257,7 @@ public static class OptionalExtensions
             {
                 var value0 = source;
                 var value1 = optional.Get(Just(value0));
-                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue(source));
+                var value2 = lens.Get(value1 is { IsJust: true } ? value1.Value : getDefaultValue(source));
 
                 return value2;
             },
@@ -257,7 +290,40 @@ public static class OptionalExtensions
             {
                 var value0 = source;
                 var value1 = optional.Get(Just(value0));
-                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue());
+                var value2 = lens.Get(value1 is { IsJust: true } ? value1.Value : getDefaultValue());
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+
+                if (value1.IsNothing)
+                {
+                    return value0;
+                }
+
+                var newValue1 = lens.Set(value1.Value, value);
+                var newValue0 = optional.Set(Just(source), newValue1).Value; // optional.Set이 Just를 반환한다고 가정한다.
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Optional<Maybe<T>, TValue1> optional,
+        Lens<TValue1, TValue2> lens,
+        TValue1 defaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = optional.Get(Just(value0));
+                var value2 = lens.Get(value1 is { IsJust: true } ? value1.Value : defaultValue);
 
                 return value2;
             },
@@ -294,7 +360,7 @@ public static class OptionalExtensions
                     return value;
                 }
 
-                return mapGet != null ? mapGet.Invoke(source, value.Value) : value;
+                return mapGet?.Invoke(source, value.Value) ?? value;
             },
             setter: (source, value) =>
             {
@@ -318,7 +384,7 @@ public static class OptionalExtensions
                     return value;
                 }
 
-                return mapGet != null ? mapGet.Invoke(value.Value) : value;
+                return mapGet?.Invoke(value.Value) ?? value;
             },
             setter: (source, value) =>
             {
@@ -400,6 +466,16 @@ public static class OptionalExtensions
         );
     }
 
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this Optional<T, TValue> optional,
+        TValue defaultValue
+    )
+    {
+        return Getter<T, TValue>.Of(
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : defaultValue
+        );
+    }
+
     public static Setter<T, TValue> ToSetter<T, TValue>(
         this Optional<T, TValue> optional
     )
@@ -427,6 +503,17 @@ public static class OptionalExtensions
     {
         return Lens<T, TValue>.Of(
             getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),
+            setter: optional.Set
+        );
+    }
+
+    public static Lens<T, TValue> ToLens<T, TValue>(
+        this Optional<T, TValue> optional,
+        TValue defaultValue
+    )
+    {
+        return Lens<T, TValue>.Of(
+            getter: source => optional.Get(source) is { IsJust: true } just ? just.Value : defaultValue,
             setter: optional.Set
         );
     }

@@ -168,6 +168,31 @@ public static class PrismExtensions
         );
     }
 
+    public static Iso<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Prism<T, TValue1> prism,
+        Iso<TValue1, TValue2> iso,
+        TValue1 defaultValue
+    )
+    {
+        return Iso<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value0 = source;
+                var value1 = prism.Get(value0) is { IsJust: true } just ? just.Value : defaultValue;
+                var value2 = iso.Get(value1);
+
+                return value2;
+            },
+            constructor: value =>
+            {
+                var newValue1 = iso.Construct(value);
+                var newValue0 = prism.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
     public static Prism<T, TValue> Transform<T, TValue>(
         this Prism<T, TValue> prism,
         Func<T, TValue, Maybe<TValue>>? mapGet = null,
@@ -183,7 +208,7 @@ public static class PrismExtensions
                     return value;
                 }
 
-                return mapGet != null ? mapGet.Invoke(source, value.Value) : value;
+                return mapGet?.Invoke(source, value.Value) ?? value;
             },
             constructor: value =>
             {
@@ -208,7 +233,7 @@ public static class PrismExtensions
                     return value;
                 }
 
-                return mapGet != null ? mapGet.Invoke(value.Value) : value;
+                return mapGet?.Invoke(value.Value) ?? value;
             },
             constructor: value =>
             {
@@ -245,6 +270,16 @@ public static class PrismExtensions
         );
     }
 
+    public static Getter<T, TValue> ToGetter<T, TValue>(
+        this Prism<T, TValue> prism,
+        TValue defaultValue
+    )
+    {
+        return Getter<T, TValue>.Of(
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : defaultValue
+        );
+    }
+
     public static Constructor<T, TValue> ToConstructor<T, TValue>(
         this Prism<T, TValue> prism
     )
@@ -270,6 +305,17 @@ public static class PrismExtensions
     {
         return Iso<T, TValue>.Of(
             getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : getDefaultValue(),
+            constructor: prism.Construct
+        );
+    }
+
+    public static Iso<T, TValue> ToIso<T, TValue>(
+        this Prism<T, TValue> prism,
+        TValue defaultValue
+    )
+    {
+        return Iso<T, TValue>.Of(
+            getter: source => prism.Get(source) is { IsJust: true } just ? just.Value : defaultValue,
             constructor: prism.Construct
         );
     }

@@ -83,6 +83,14 @@ public static class Extensions
     {
         return optional.ToLens(getDefaultValue);
     }
+
+    public static Lens<T, TValue> OrElse<T, TValue>(
+        this Optional<T, TValue> optional,
+        TValue defaultValue
+    )
+    {
+        return optional.ToLens(defaultValue);
+    }
 }
 
 file static class FileScopeExtensions

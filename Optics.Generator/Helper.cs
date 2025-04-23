@@ -376,14 +376,22 @@ internal static class Helper
 
     private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
     {
-        return typeSymbol
-            .GetMembers()
-            .Where(symbol => symbol.DeclaredAccessibility == Accessibility.Public)
-            .Where(symbol =>
-                (symbol is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
-                (symbol is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
-            )
-            .ToImmutableArray();
+        var result = new List<ISymbol>();
+
+        for (var current = typeSymbol; current != null; current = current.BaseType)
+        {
+            var members = current
+                .GetMembers()
+                .Where(symbol => symbol.DeclaredAccessibility == Accessibility.Public)
+                .Where(symbol =>
+                    (symbol is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
+                    (symbol is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
+                );
+
+            result.AddRange(members);
+        }
+
+        return result.Distinct(SymbolEqualityComparer.Default).ToImmutableArray();
     }
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)

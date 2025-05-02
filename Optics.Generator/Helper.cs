@@ -114,43 +114,88 @@ internal static class Helper
 
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
     {
-        return GenerateLensOfMembers(typeSymbol, getSourceByMember: (typeName, memberTypeName, memberName) =>
-        {
-            var lines = new List<string>
+        return GenerateLensOfMembers(
+            typeSymbol,
+            getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
             {
-                $"{LensTypeName}<{typeName}, {memberTypeName}>.Of(",
-                $"    getter: static source => source.{memberName},",
-                $"    setter: static (source, value) => source with",
-                $"    {{",
-                $"        {memberName} = value,",
-                $"    }}",
-                $");",
-            };
+                var memberDeclaration = isNullable
+                    ? $"{LensTypeName}<{typeName}, {MaybeTypeName}<{memberTypeName}>> {memberName}"
+                    : $"{LensTypeName}<{typeName}, {memberTypeName}> {memberName}";
 
-            return ($"{LensTypeName}<{typeName}, {memberTypeName}> {memberName}", lines.ToImmutableArray());
-        });
+                var lines = isNullable
+                    ? new List<string>
+                    {
+                        $"{LensTypeName}<{typeName}, {MaybeTypeName}<{memberTypeName}>>.Of(",
+                        $"    getter: static source => source is {{ {memberName}: {{ }} value }}",
+                        $"        ? {MaybeTypeName}.Just(value)",
+                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"    setter: static (source, value) => source with",
+                        $"    {{",
+                        $"        {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
+                        $"    }}",
+                        $");",
+                    }
+                    :  new List<string>
+                    {
+                        $"{LensTypeName}<{typeName}, {memberTypeName}>.Of(",
+                        $"    getter: static source => source.{memberName},",
+                        $"    setter: static (source, value) => source with",
+                        $"    {{",
+                        $"        {memberName} = value,",
+                        $"    }}",
+                        $");",
+                    };
+
+                return (memberDeclaration, lines.ToImmutableArray());
+            }
+        );
     }
 
-    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(INamedTypeSymbol typeSymbol)
+    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(
+        INamedTypeSymbol typeSymbol
+    )
     {
-        return GenerateLensOfMembers(typeSymbol, getSourceByMember: (typeName, memberTypeName, memberName) =>
-        {
-            var lines = ImmutableArray.Create(
-                $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(",
-                $"    optionalGetter: static source => source.IsJust",
-                $"        ? {MaybeTypeName}.Just(source.Value.{memberName})",
-                $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
-                $"    setter: static (source, value) => source.IsJust",
-                $"        ? {MaybeTypeName}.Just(source.Value with",
-                $"        {{",
-                $"            {memberName} = value,",
-                $"        }})",
-                $"        : {MaybeTypeName}.Nothing<{typeName}>()",
-                $");"
-            );
+        return GenerateLensOfMembers(
+            typeSymbol,
+            getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
+            {
+                var memberDeclaration = isNullable
+                    ? $"{LensTypeName}<{MaybeTypeName}<{typeName}>, {MaybeTypeName}<{memberTypeName}>> {memberName}"
+                    : $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {memberName}";
 
-            return ($"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {memberName}", lines);
-        });
+                var lines = isNullable
+                    ? ImmutableArray.Create(
+                        $"{LensTypeName}<{MaybeTypeName}<{typeName}>, {MaybeTypeName}<{memberTypeName}>>.Of(",
+                        $"    getter: static source => source is {{ IsJust: true, Value: {{ }} value }}",
+                        $"        ? value.{memberName} is {{ }} value2",
+                        $"            ? {MaybeTypeName}.Just(value2)",
+                        $"            : {MaybeTypeName}.Nothing<{memberTypeName}>()",
+                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"    setter: static (source, value) => source.IsJust",
+                        $"        ? {MaybeTypeName}.Just(source.Value with",
+                        $"        {{",
+                        $"            {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
+                        $"        }})",
+                        $"        : {MaybeTypeName}.Nothing<{typeName}>()",
+                        $");"
+                    )
+                    : ImmutableArray.Create(
+                        $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(",
+                        $"    optionalGetter: static source => source.IsJust",
+                        $"        ? {MaybeTypeName}.Just(source.Value.{memberName})",
+                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"    setter: static (source, value) => source.IsJust",
+                        $"        ? {MaybeTypeName}.Just(source.Value with",
+                        $"        {{",
+                        $"            {memberName} = value,",
+                        $"        }})",
+                        $"        : {MaybeTypeName}.Nothing<{typeName}>()",
+                        $");"
+                    );
+
+                return (memberDeclaration, lines);
+            }
+        );
     }
 
     public static void AddSource(
@@ -175,6 +220,16 @@ internal static class Helper
         // begin extension methods
         stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
         stringBuilder.AppendLine($"    {{");
+        stringBuilder.AppendLine($"        private static T Get<T>(T? value) where T : class");
+        stringBuilder.AppendLine($"        {{");
+        stringBuilder.AppendLine($"            return value!;");
+        stringBuilder.AppendLine($"        }}");
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine($"        private static T Get<T>(T? value) where T : struct");
+        stringBuilder.AppendLine($"        {{");
+        stringBuilder.AppendLine($"            return value!.Value;");
+        stringBuilder.AppendLine($"        }}");
+        stringBuilder.AppendLine();
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
         {
@@ -198,6 +253,7 @@ internal static class Helper
                 stringBuilder.AppendLine($"        {{");
 
                 stringBuilder.AppendLine($"            return {lines[0]}");
+
                 foreach (var line in lines.Skip(1))
                 {
                     stringBuilder.AppendLine($"            {line}");
@@ -268,10 +324,23 @@ internal static class Helper
         stringBuilder.AppendLine($"{depthSpacerText}{GetPartialTypeDeclarationString(containingTypeSymbol)}");
         stringBuilder.AppendLine($"{depthSpacerText}{{");
 
-        // generate targetType members
+        // generate static helper methods
         depthSpacerText += "    ";
 
+        stringBuilder.AppendLine($"{depthSpacerText}private static T Get<T>(T? value) where T : class");
+        stringBuilder.AppendLine($"{depthSpacerText}{{");
+        stringBuilder.AppendLine($"{depthSpacerText}    return value!;");
+        stringBuilder.AppendLine($"{depthSpacerText}}}");
+        stringBuilder.AppendLine();
+        stringBuilder.AppendLine($"{depthSpacerText}private static T Get<T>(T? value) where T : struct");
+        stringBuilder.AppendLine($"{depthSpacerText}{{");
+        stringBuilder.AppendLine($"{depthSpacerText}    return value!.Value;");
+        stringBuilder.AppendLine($"{depthSpacerText}}}");
+        stringBuilder.AppendLine();
+
+        // generate targetType members
         var members = generateLensOfMembers(targetTypeSymbol);
+
         for (var i = 0; i < members.Length; ++i)
         {
             var (memberDeclaration, lines) = members[i];
@@ -350,7 +419,7 @@ internal static class Helper
 
     private static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
         INamedTypeSymbol typeSymbol,
-        Func<string, string, string, (string, ImmutableArray<string>)> getSourceByMember
+        Func<string, string, string, bool, (string, ImmutableArray<string>)> getSourceByMember
     )
     {
         var members = GetValidMemberSymbols(typeSymbol);
@@ -364,14 +433,40 @@ internal static class Helper
 
         foreach (var member in members)
         {
-            var memberTypeName = ToFullyQualifiedName(member is IPropertySymbol propertySymbol
-                ? propertySymbol.Type
-                : ((IFieldSymbol)member).Type
-            );
-            builder.Add(getSourceByMember(typeName, memberTypeName!, member.Name));
+            var memberTypeName = GetMemberTypeName(member);
+            var isNullable = IsNullable(member);
+
+            builder.Add(getSourceByMember(typeName, memberTypeName, member.Name, isNullable));
         }
 
         return builder.ToImmutable();
+
+        #region Local Functions
+        static string GetMemberTypeName(ISymbol symbol)
+        {
+            return ToFullyQualifiedName(GetUnderlyingType(symbol is IPropertySymbol propertySymbol
+                ? propertySymbol.Type
+                : ((IFieldSymbol)symbol).Type
+            ))!;
+
+            #region Local Functions
+            static ISymbol GetUnderlyingType(ISymbol symbol)
+            {
+                return symbol
+                    is INamedTypeSymbol { ConstructedFrom.SpecialType: SpecialType.System_Nullable_T } namedTypeSymbol
+                    ? namedTypeSymbol.TypeArguments[0]
+                    : symbol;
+            }
+            #endregion
+        }
+
+        static bool IsNullable(ISymbol symbol)
+        {
+            return symbol is
+                IPropertySymbol { Type.NullableAnnotation: NullableAnnotation.Annotated } or
+                IFieldSymbol { Type.NullableAnnotation: NullableAnnotation.Annotated };
+        }
+        #endregion
     }
 
     private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
@@ -396,8 +491,7 @@ internal static class Helper
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)
     {
-        if (propertySymbol.NullableAnnotation == NullableAnnotation.Annotated ||
-            propertySymbol.GetMethod is null ||
+        if (propertySymbol.GetMethod is null ||
             propertySymbol.IsIndexer
         )
         {
@@ -409,11 +503,12 @@ internal static class Helper
 
     private static bool IsValidField(IFieldSymbol fieldSymbol)
     {
-        return
-            !fieldSymbol.IsConst &&
-            !fieldSymbol.IsStatic &&
-            !fieldSymbol.IsReadOnly &&
-            fieldSymbol.NullableAnnotation != NullableAnnotation.Annotated;
+        return fieldSymbol is
+        {
+            IsConst: false,
+            IsStatic: false,
+            IsReadOnly: false,
+        };
     }
 
     private static StringBuilder CreateStringBuilderWithFileHeader()

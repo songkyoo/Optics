@@ -405,12 +405,13 @@ internal static class Helper
 
         static string GetHintName(INamedTypeSymbol typeSymbol)
         {
+            var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
             var qualifiedName = ToFullyQualifiedName(typeSymbol)!;
 
             using var sha = System.Security.Cryptography.SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(qualifiedName);
+            var bytes = Encoding.UTF8.GetBytes(assemblyName + qualifiedName);
             var hash = sha.ComputeHash(bytes);
-            var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()[..8];
+            var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()[..16];
 
             return $"{hashString}_{typeSymbol.Name}_{typeSymbol.Arity}.g.cs";
         }

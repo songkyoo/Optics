@@ -12,6 +12,7 @@
     <Version>1.0.4</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/songkyoo/Optics</RepositoryUrl>
   </PropertyGroup>
 

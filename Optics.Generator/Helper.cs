@@ -295,8 +295,12 @@ internal static class Helper
         var stringBuilder = CreateStringBuilderWithFileHeader();
 
         // begin namespace
-        stringBuilder.AppendLine($"namespace {containingTypeSymbol.ContainingNamespace.ToDisplayString()}");
-        stringBuilder.AppendLine($"{{");
+        var hasNamespace = !containingTypeSymbol.ContainingNamespace.IsGlobalNamespace;
+        if (hasNamespace)
+        {
+            stringBuilder.AppendLine($"namespace {containingTypeSymbol.ContainingNamespace.ToDisplayString()}");
+            stringBuilder.AppendLine($"{{");
+        }
 
         // get nestedTypes
         var nestedTypes = new List<INamedTypeSymbol>();
@@ -307,7 +311,7 @@ internal static class Helper
             parentType = parentType.ContainingType;
         }
 
-        var depthSpacerText = "    ";
+        var depthSpacerText = hasNamespace ? "    " : "";
 
         // begin nestedTypes
         for (var i = nestedTypes.Count - 1; i >= 0; --i)
@@ -371,7 +375,10 @@ internal static class Helper
         }
 
         // end namespace
-        stringBuilder.AppendLine($"}}");
+        if (hasNamespace)
+        {
+            stringBuilder.AppendLine($"}}");
+        }
 
         sourceProductionContext.AddSource(
             hintName: GetHintName(targetTypeSymbol),

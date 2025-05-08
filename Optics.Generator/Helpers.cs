@@ -89,7 +89,7 @@ internal static class Helpers
             return null;
         }
 
-        if (!typeSymbol.IsStatic || typeSymbol.IsGenericType)
+        if (!typeSymbol.IsStatic)
         {
             return null;
         }

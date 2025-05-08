@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Macaron.Optics.Generator;
 
-internal static class Helper
+internal static class Helpers
 {
     #region Constants
     public const string LensTypeName = "global::Macaron.Optics.Lens";

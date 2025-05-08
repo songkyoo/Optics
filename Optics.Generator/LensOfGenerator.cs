@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
-using static Macaron.Optics.Generator.Helper;
+using static Macaron.Optics.Generator.Helpers;
 
 namespace Macaron.Optics.Generator;
 

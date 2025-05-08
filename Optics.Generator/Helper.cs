@@ -415,12 +415,19 @@ internal static class Helper
             var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
             var qualifiedName = ToFullyQualifiedName(typeSymbol)!;
 
-            using var sha = System.Security.Cryptography.SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(assemblyName + qualifiedName);
-            var hash = sha.ComputeHash(bytes);
-            var hashString = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant()[..16];
+            const uint fnvPrime = 16777619;
+            const uint offsetBasis = 2166136261;
 
-            return $"{hashString}_{typeSymbol.Name}_{typeSymbol.Arity}.g.cs";
+            var bytes = Encoding.UTF8.GetBytes($"{assemblyName}, {qualifiedName}");
+            uint hash = offsetBasis;
+
+            foreach (var b in bytes)
+            {
+                hash ^= b;
+                hash *= fnvPrime;
+            }
+
+            return $"{hash:x8}_{typeSymbol.Name}_{typeSymbol.Arity}.g.cs";
         }
         #endregion
     }

@@ -427,7 +427,7 @@ internal static class Helpers
                 hash *= fnvPrime;
             }
 
-            return $"{hash:x8}_{typeSymbol.Name}_{typeSymbol.Arity}.g.cs";
+            return $"{typeSymbol.Name}_{typeSymbol.Arity}.{hash:x8}.g.cs";
         }
         #endregion
     }

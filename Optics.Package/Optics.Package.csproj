@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <PackageId>Macaron.Optics</PackageId>
-    <Version>1.0.4</Version>
+    <Version>1.0.5</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
@@ -15,7 +15,7 @@
 
   <ItemGroup>
     <PackageReference Include="Macaron.Optics.Core" Version="1.0.4" />
-    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.2" />
+    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.3" />
   </ItemGroup>
 
 </Project>

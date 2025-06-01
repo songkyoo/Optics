@@ -111,8 +111,8 @@ internal static class Helpers
             return null;
         }
 
-        var targetTypeSymbol = lensOfAttribute.ConstructorArguments.Length == 1
-            ? lensOfAttribute.ConstructorArguments[0].Value as INamedTypeSymbol
+        var targetTypeSymbol = lensOfAttribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
+            ? symbolArgument
             : typeSymbol.ContainingType;
 
         return targetTypeSymbol == null ? null : new LensOfContext(

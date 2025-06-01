@@ -45,19 +45,24 @@ public class LensOfGenerator : IIncrementalGenerator
             ctx.AddSource("LensOfAttribute.g.cs", SourceText.From(LensOfAttributeSource, Encoding.UTF8));
         });
 
-        var classDeclarations = context
+        var visitedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        IncrementalValuesProvider<LensOfContext> valuesProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
-                transform: static (context, _) => GetClassWithLensOfAttribute(context, LensOfAttributeName)
+                transform: (generatorSyntaxContext, _) => GetClassWithLensOfAttribute(
+                    generatorSyntaxContext,
+                    LensOfAttributeName,
+                    visitedTypes
+                )
             )
-            .Where(static classDeclaration => classDeclaration is not null);
+            .Where(static lensOfContext => lensOfContext != null)!;
 
         context.RegisterSourceOutput(
-            source: classDeclarations,
+            source: valuesProvider,
             action: (sourceProductionContext, lensOfContext) => AddSource(
                 sourceProductionContext: sourceProductionContext,
-                lensOfContext: lensOfContext!,
+                lensOfContext: lensOfContext,
                 generateLensOfMembers: GenerateLensOfMembers
             )
         );

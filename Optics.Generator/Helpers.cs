@@ -81,7 +81,11 @@ internal static class Helpers
         #endregion
     }
 
-    public static LensOfContext? GetClassWithLensOfAttribute(GeneratorSyntaxContext context, string lensOfAttributeName)
+    public static LensOfContext? GetClassWithLensOfAttribute(
+        GeneratorSyntaxContext context,
+        string lensOfAttributeName,
+        HashSet<INamedTypeSymbol> visitedTypes
+    )
     {
         var typeDeclaration = (TypeDeclarationSyntax)context.Node;
         if (context.SemanticModel.GetDeclaredSymbol(typeDeclaration) is not INamedTypeSymbol typeSymbol)
@@ -98,6 +102,11 @@ internal static class Helpers
             .GetAttributes()
             .FirstOrDefault(attributeData => ToFullyQualifiedName(attributeData.AttributeClass) == lensOfAttributeName);
         if (lensOfAttribute is null)
+        {
+            return null;
+        }
+
+        if (!visitedTypes.Add(typeSymbol))
         {
             return null;
         }
@@ -220,16 +229,6 @@ internal static class Helpers
         // begin extension methods
         stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
         stringBuilder.AppendLine($"    {{");
-        stringBuilder.AppendLine($"        private static T Get<T>(T? value) where T : class");
-        stringBuilder.AppendLine($"        {{");
-        stringBuilder.AppendLine($"            return value!;");
-        stringBuilder.AppendLine($"        }}");
-        stringBuilder.AppendLine();
-        stringBuilder.AppendLine($"        private static T Get<T>(T? value) where T : struct");
-        stringBuilder.AppendLine($"        {{");
-        stringBuilder.AppendLine($"            return value!.Value;");
-        stringBuilder.AppendLine($"        }}");
-        stringBuilder.AppendLine();
 
         for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
         {
@@ -328,22 +327,10 @@ internal static class Helpers
         stringBuilder.AppendLine($"{depthSpacerText}{GetPartialTypeDeclarationString(containingTypeSymbol)}");
         stringBuilder.AppendLine($"{depthSpacerText}{{");
 
-        // generate static helper methods
-        depthSpacerText += "    ";
-
-        stringBuilder.AppendLine($"{depthSpacerText}private static T Get<T>(T? value) where T : class");
-        stringBuilder.AppendLine($"{depthSpacerText}{{");
-        stringBuilder.AppendLine($"{depthSpacerText}    return value!;");
-        stringBuilder.AppendLine($"{depthSpacerText}}}");
-        stringBuilder.AppendLine();
-        stringBuilder.AppendLine($"{depthSpacerText}private static T Get<T>(T? value) where T : struct");
-        stringBuilder.AppendLine($"{depthSpacerText}{{");
-        stringBuilder.AppendLine($"{depthSpacerText}    return value!.Value;");
-        stringBuilder.AppendLine($"{depthSpacerText}}}");
-        stringBuilder.AppendLine();
-
         // generate targetType members
         var members = generateLensOfMembers(targetTypeSymbol);
+
+        depthSpacerText += "    ";
 
         for (var i = 0; i < members.Length; ++i)
         {

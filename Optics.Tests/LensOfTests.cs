@@ -42,7 +42,7 @@ public class LensOfTests
         var generatedSources = result.GeneratedSources;
         var actual = generatedSources.Length > 1 ? generatedSources[1].SourceText.ToString() : "";
 
-        Assert.That(actual, Is.EqualTo(expected));
+        Assert.That(actual.ReplaceLineEndings(), Is.EqualTo(expected.ReplaceLineEndings()));
     }
 
     [Test]

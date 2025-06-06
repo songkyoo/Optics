@@ -1,20 +1,35 @@
 ﻿using System.Collections.Immutable;
+using System.Reflection;
 using Macaron.Optics.Generator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 namespace Macaron.Optics.Tests;
 
-public class LensOfTests
+public class LensOfGeneratorTests
 {
-    private static void Assert_LensOf_Attribute(string sourceCode, string expected)
+    private static void AssertGeneratedCode(string sourceCode, string expected)
     {
-        var attributeAssembly = typeof(LensOf<>).Assembly;
+        var (_, generatedCode) = CompileAndGetResults<LensOfGenerator>(
+            sourceCode,
+            skipGeneratedCodeCount: 2, // 0, 1번은 LensOfAttribute.g.cs, OptionalOfAttribute.g.cs
+            additionalAssemblies: [typeof(LensOf<>).Assembly]
+        );
+
+        Assert.That(generatedCode.ReplaceLineEndings(), Is.EqualTo(expected.ReplaceLineEndings()));
+    }
+
+    private static (ImmutableArray<Diagnostic> diagnostics, string generatedCode) CompileAndGetResults<T>(
+        string sourceCode,
+        int skipGeneratedCodeCount,
+        Assembly[]? additionalAssemblies = null
+    ) where T : IIncrementalGenerator, new()
+    {
         var references = AppDomain
             .CurrentDomain
             .GetAssemblies()
+            .Concat(additionalAssemblies ?? [])
             .Where(assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
-            .Append(attributeAssembly)
             .Select(assembly => MetadataReference.CreateFromFile(assembly.Location))
             .Cast<MetadataReference>()
             .ToImmutableArray();
@@ -30,25 +45,26 @@ public class LensOfTests
             )
         );
 
-        foreach (var diagnostic in compilation.GetDiagnostics())
-        {
-            Console.WriteLine(diagnostic);
-        }
-
-        var generator = new LensOfGenerator();
+        var generator = new T();
         var driver = CSharpGeneratorDriver.Create(generator);
 
         var result = driver.RunGenerators(compilation).GetRunResult().Results.Single();
         var generatedSources = result.GeneratedSources;
-        var actual = generatedSources.Length > 1 ? generatedSources[1].SourceText.ToString() : "";
+        var generatedCode = generatedSources.Length > skipGeneratedCodeCount
+            ? generatedSources[skipGeneratedCodeCount].SourceText.ToString()
+            : "";
 
-        Assert.That(actual.ReplaceLineEndings(), Is.EqualTo(expected.ReplaceLineEndings()));
+        var allDiagnostics = compilation.GetDiagnostics()
+            .Concat(result.Diagnostics)
+            .ToImmutableArray();
+
+        return (allDiagnostics, generatedCode);
     }
 
     [Test]
     public void When_LensOfAttributeWithoutTypeArgument_Should_UseContainingType()
     {
-        Assert_LensOf_Attribute(
+        AssertGeneratedCode(
             sourceCode:
             """
             namespace Macaron.Optics.Tests;

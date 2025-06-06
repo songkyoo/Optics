@@ -11,24 +11,34 @@ internal static class Helpers
     #region Constants
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
+    private const string LensOfAttributeName = "global::Macaron.Optics.LensOfAttribute";
+    private const string OptionalOfAttributeName = "global::Macaron.Optics.OptionalOfAttribute";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
     #endregion
 
     #region Types
-    public sealed record LensOfAttributeContext(
-        INamedTypeSymbol? ContainingTypeSymbol,
-        INamedTypeSymbol? TypeSymbol,
+    public record AttributeContext(
         ImmutableArray<Diagnostic> Diagnostics
     )
     {
         #region Static
-        public static readonly LensOfAttributeContext Empty = new(
-            ContainingTypeSymbol: null,
-            TypeSymbol: null,
+        public static readonly AttributeContext Empty = new(
             Diagnostics: ImmutableArray<Diagnostic>.Empty
         );
         #endregion
     }
+
+    public sealed record LensOfAttributeContext(
+        INamedTypeSymbol ContainingTypeSymbol,
+        INamedTypeSymbol TypeSymbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    ) : AttributeContext(Diagnostics);
+
+    public sealed record OptionalOfAttributeContext(
+        INamedTypeSymbol ContainingTypeSymbol,
+        INamedTypeSymbol TypeSymbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    ) : AttributeContext(Diagnostics);
 
     public record TypeContext(
         ImmutableArray<Diagnostic> Diagnostics
@@ -185,70 +195,79 @@ internal static class Helpers
         #endregion
     }
 
-    public static LensOfAttributeContext GetClassWithLensOfAttribute(
+    public static AttributeContext GetAttributeContext(
         GeneratorSyntaxContext context,
-        string lensOfAttributeName,
         HashSet<INamedTypeSymbol> visitedTypes
     )
     {
-        var typeDeclaration = (TypeDeclarationSyntax)context.Node;
-        if (context.SemanticModel.GetDeclaredSymbol(typeDeclaration) is not INamedTypeSymbol containingTypeSymbol)
+        if (context.Node is not TypeDeclarationSyntax declarationSyntax)
         {
-            return LensOfAttributeContext.Empty;
+            return AttributeContext.Empty;
         }
 
-        var lensOfAttribute = containingTypeSymbol
-            .GetAttributes()
-            .FirstOrDefault(attributeData => ToFullyQualifiedName(attributeData.AttributeClass) == lensOfAttributeName);
-        if (lensOfAttribute is null)
+        if (context.SemanticModel.GetDeclaredSymbol(declarationSyntax) is not INamedTypeSymbol containingTypeSymbol)
         {
-            return LensOfAttributeContext.Empty;
+            return AttributeContext.Empty;
+        }
+
+        var attribute = containingTypeSymbol
+            .GetAttributes()
+            .FirstOrDefault(static attributeData => ToFullyQualifiedName(attributeData.AttributeClass)
+                is LensOfAttributeName
+                or OptionalOfAttributeName
+            );
+        if (attribute is null)
+        {
+            return AttributeContext.Empty;
         }
 
         if (!visitedTypes.Add(containingTypeSymbol))
         {
-            return LensOfAttributeContext.Empty;
+            return AttributeContext.Empty;
         }
-
-        var diagnosticsBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
 
         if (!containingTypeSymbol.IsStatic)
         {
-            diagnosticsBuilder.Add(Diagnostic.Create(
-                descriptor: LensOfAttributeMustBeOnStaticClassRule,
-                location: lensOfAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
-                messageArgs: [containingTypeSymbol]
-            ));
-
-            return LensOfAttributeContext.Empty with
+            return AttributeContext.Empty with
             {
-                Diagnostics = diagnosticsBuilder.ToImmutable(),
+                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+                    descriptor: LensOfAttributeMustBeOnStaticClassRule,
+                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    messageArgs: [containingTypeSymbol]
+                )),
             };
         }
 
-        var typeSymbol = lensOfAttribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
+        var typeSymbol = attribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
             ? symbolArgument
             : containingTypeSymbol.ContainingType;
 
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            diagnosticsBuilder.Add(Diagnostic.Create(
-                descriptor: LensOfAttributeTargetMustSupportWithExpressionRule,
-                location: lensOfAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
-                messageArgs: [typeSymbol]
-            ));
-
-            return LensOfAttributeContext.Empty with
+            return AttributeContext.Empty with
             {
-                Diagnostics = diagnosticsBuilder.ToImmutable(),
+                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+                    descriptor: LensOfAttributeTargetMustSupportWithExpressionRule,
+                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    messageArgs: [typeSymbol]
+                )),
             };
         }
 
-        return new LensOfAttributeContext(
-            ContainingTypeSymbol: containingTypeSymbol,
-            TypeSymbol: typeSymbol,
-            Diagnostics: diagnosticsBuilder.ToImmutable()
-        );
+        return ToFullyQualifiedName(attribute.AttributeClass) switch
+        {
+            LensOfAttributeName => new LensOfAttributeContext(
+                ContainingTypeSymbol: containingTypeSymbol,
+                TypeSymbol: typeSymbol,
+                Diagnostics: ImmutableArray<Diagnostic>.Empty
+            ),
+            OptionalOfAttributeName => new OptionalOfAttributeContext(
+                ContainingTypeSymbol: containingTypeSymbol,
+                TypeSymbol: typeSymbol,
+                Diagnostics: ImmutableArray<Diagnostic>.Empty
+            ),
+            _ => throw new InvalidOperationException($"Invalid type: {attribute.AttributeClass}"),
+        };
     }
 
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
@@ -341,7 +360,7 @@ internal static class Helpers
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
         ImmutableArray<INamedTypeSymbol> typeSymbols,
-        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
+        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
     )
     {
         var uniqueTypeSymbols = typeSymbols
@@ -366,7 +385,7 @@ internal static class Helpers
         {
             var typeSymbol = uniqueTypeSymbols[i];
 
-            var members = generateLensOfMembers(typeSymbol);
+            var members = generateMembers(typeSymbol);
             if (members.Length == 0)
             {
                 continue;
@@ -418,16 +437,11 @@ internal static class Helpers
 
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
-        LensOfAttributeContext lensOfAttributeContext,
-        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
+        (INamedTypeSymbol ContainingTypeSymbol, INamedTypeSymbol TypeSymbol) attributeContext,
+        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
     )
     {
-        var (containingTypeSymbol, typeSymbol, diagnostics) = lensOfAttributeContext;
-
-        foreach (var diagnostic in diagnostics)
-        {
-            sourceProductionContext.ReportDiagnostic(diagnostic);
-        }
+        var (containingTypeSymbol, typeSymbol) = attributeContext;
 
         if (containingTypeSymbol == null || typeSymbol == null)
         {
@@ -471,7 +485,7 @@ internal static class Helpers
         stringBuilder.AppendLine($"{depthSpacerText}{{");
 
         // write members
-        var members = generateLensOfMembers(typeSymbol);
+        var members = generateMembers(typeSymbol);
 
         depthSpacerText += "    ";
 

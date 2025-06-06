@@ -49,13 +49,13 @@ public class LensGenerator : IIncrementalGenerator
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "LensOf",
                     typeSymbols: lensOfTypeSymbolsBuilder.ToImmutable(),
-                    generateLensOfMembers: GenerateLensOfMembers
+                    generateMembers: GenerateLensOfMembers
                 );
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "OptionalOf",
                     typeSymbols: optionalOfTypeSymbolsBuilder.ToImmutable(),
-                    generateLensOfMembers: GenerateOptionalOfMembers
+                    generateMembers: GenerateOptionalOfMembers
                 );
             });
     }

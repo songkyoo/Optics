@@ -443,7 +443,8 @@ internal static class Helpers
     {
         var (containingTypeSymbol, typeSymbol) = attributeContext;
 
-        if (containingTypeSymbol == null || typeSymbol == null)
+        var members = generateMembers(typeSymbol);
+        if (members.IsDefaultOrEmpty)
         {
             return;
         }
@@ -485,8 +486,6 @@ internal static class Helpers
         stringBuilder.AppendLine($"{depthSpacerText}{{");
 
         // write members
-        var members = generateMembers(typeSymbol);
-
         depthSpacerText += "    ";
 
         for (var i = 0; i < members.Length; ++i)
@@ -650,7 +649,8 @@ internal static class Helpers
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)
     {
-        if (propertySymbol.GetMethod is null ||
+        if (propertySymbol.IsStatic ||
+            propertySymbol.GetMethod is null ||
             propertySymbol.IsIndexer
         )
         {

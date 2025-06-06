@@ -11,22 +11,23 @@ public class OptionalGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var optionalOfCalls = context
+        var valueProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is InvocationExpressionSyntax,
-                transform: static (generatorSyntaxContext, _) => GetLensOfType(generatorSyntaxContext, OptionalTypeName)
+                transform: static (generatorSyntaxContext, _) => GetLensOfTypeContext(
+                    generatorSyntaxContext,
+                    OptionalTypeName
+                )
             )
-            .Where(static typeName => typeName is not null)
-            .Select(static (typeName, _) => typeName!)
             .Collect();
 
         context.RegisterSourceOutput(
-            source: optionalOfCalls,
-            action: (sourceProductionContext, lensTypeSymbols) => AddSource(
+            source: valueProvider,
+            action: (sourceProductionContext, lensTypeContexts) => AddSource(
                 sourceProductionContext: sourceProductionContext,
                 lensOfTypeName: "OptionalOf",
-                lensTypeSymbols: lensTypeSymbols,
+                lensOfTypeContexts: lensTypeContexts,
                 generateLensOfMembers: GenerateOptionalOfMembers
             )
         );

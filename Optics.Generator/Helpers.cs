@@ -15,19 +15,80 @@ internal static class Helpers
     #endregion
 
     #region Types
-    public sealed record LensOfContext(
-        INamedTypeSymbol ContainingTypeSymbol,
-        INamedTypeSymbol TargetTypeSymbol
+    public sealed record LensOfAttributeContext(
+        INamedTypeSymbol? ContainingTypeSymbol,
+        INamedTypeSymbol? TypeSymbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    )
+    {
+        #region Static
+        public static readonly LensOfAttributeContext Empty = new(
+            ContainingTypeSymbol: null,
+            TypeSymbol: null,
+            Diagnostics: ImmutableArray<Diagnostic>.Empty
+        );
+        #endregion
+    }
+
+    public sealed record LensOfTypeContext(
+        INamedTypeSymbol? Symbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    )
+    {
+        #region Static
+        public static readonly LensOfTypeContext Empty = new(
+            Symbol: null,
+            Diagnostics: ImmutableArray<Diagnostic>.Empty
+        );
+        #endregion
+    }
+    #endregion
+
+    #region Diagnostics
+    private static readonly DiagnosticDescriptor LensTargetTypeCannotBeNullableRule = new(
+        id: "MAOG0001",
+        title: "Lens target type cannot be nullable",
+        messageFormat: "Type '{0}' is nullable. Nullable types are not supported as lens targets.",
+        category: "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+    private static readonly DiagnosticDescriptor LensTargetTypeMustSupportWithExpressionRule = new(
+        id: "MAOG0002",
+        title: "Lens target type must support 'with' expression",
+        messageFormat: "Type '{0}' must be a record or struct to be used as a lens target.",
+        category: "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+    private static readonly DiagnosticDescriptor LensOfAttributeMustBeOnStaticClassRule = new(
+        id: "MAOG0003",
+        title: "LensOf attribute must be applied to a static class",
+        messageFormat: "Class '{0}' must be static to use LensOf attribute.",
+        category: "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
+    private static readonly DiagnosticDescriptor LensOfAttributeTargetMustSupportWithExpressionRule = new(
+        id: "MAOG0004",
+        title: "LensOf attribute target type must support 'with' expression",
+        messageFormat: "Type '{0}' must be a record or struct to be used with LensOf attribute.",
+        category: "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
     );
     #endregion
 
     #region Methods
-    public static INamedTypeSymbol? GetLensOfType(GeneratorSyntaxContext generatorSyntaxContext, string containingType)
+    public static LensOfTypeContext GetLensOfTypeContext(
+        GeneratorSyntaxContext generatorSyntaxContext,
+        string containingType
+    )
     {
         var genericNameSyntax = GetGenericNameFromInvocation((InvocationExpressionSyntax)generatorSyntaxContext.Node);
         if (genericNameSyntax is null)
         {
-            return null;
+            return LensOfTypeContext.Empty;
         }
 
         var semanticModel = generatorSyntaxContext.SemanticModel;
@@ -37,34 +98,54 @@ internal static class Helpers
             ToFullyQualifiedName(methodSymbol.ContainingType) != containingType
         )
         {
-            return null;
+            return LensOfTypeContext.Empty;
         }
 
         var typeArgumentList = genericNameSyntax.TypeArgumentList;
         if (typeArgumentList.Arguments.Count != 1)
         {
-            return null;
+            return LensOfTypeContext.Empty;
         }
 
         var typeArgument = genericNameSyntax.TypeArgumentList.Arguments[0];
         var symbolInfo = semanticModel.GetSymbolInfo(typeArgument);
-        if (symbolInfo.Symbol is not INamedTypeSymbol namedTypeSymbol)
+        if (symbolInfo.Symbol is not INamedTypeSymbol typeSymbol)
         {
-            return null;
+            return LensOfTypeContext.Empty;
         }
 
         // Nullable한 형식은 지원하지 않는다.
-        if ((namedTypeSymbol.IsValueType && namedTypeSymbol.ToString().EndsWith("?")) ||
+        if ((typeSymbol.IsValueType && typeSymbol.ToString().EndsWith("?")) ||
             typeArgument.ToString().EndsWith("?")
         )
         {
-            return null;
+            return LensOfTypeContext.Empty with
+            {
+                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+                    descriptor: LensTargetTypeCannotBeNullableRule,
+                    location: typeArgument.GetLocation(),
+                    messageArgs: [typeArgument]
+                )),
+            };
         }
 
         // with 문을 지원하는 형식만 사용한다.
-        return namedTypeSymbol.IsRecord || namedTypeSymbol.TypeKind == TypeKind.Struct
-            ? namedTypeSymbol
-            : null;
+        if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
+        {
+            return LensOfTypeContext.Empty with
+            {
+                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+                    descriptor: LensTargetTypeMustSupportWithExpressionRule,
+                    location: typeArgument.GetLocation(),
+                    messageArgs: [typeArgument]
+                )),
+            };
+        }
+
+        return new LensOfTypeContext(
+            Symbol: typeSymbol,
+            Diagnostics: ImmutableArray<Diagnostic>.Empty
+        );
 
         #region Local Functions
         static GenericNameSyntax? GetGenericNameFromInvocation(
@@ -81,43 +162,69 @@ internal static class Helpers
         #endregion
     }
 
-    public static LensOfContext? GetClassWithLensOfAttribute(
+    public static LensOfAttributeContext GetClassWithLensOfAttribute(
         GeneratorSyntaxContext context,
         string lensOfAttributeName,
         HashSet<INamedTypeSymbol> visitedTypes
     )
     {
         var typeDeclaration = (TypeDeclarationSyntax)context.Node;
-        if (context.SemanticModel.GetDeclaredSymbol(typeDeclaration) is not INamedTypeSymbol typeSymbol)
+        if (context.SemanticModel.GetDeclaredSymbol(typeDeclaration) is not INamedTypeSymbol containingTypeSymbol)
         {
-            return null;
+            return LensOfAttributeContext.Empty;
         }
 
-        if (!typeSymbol.IsStatic)
-        {
-            return null;
-        }
-
-        var lensOfAttribute = typeSymbol
+        var lensOfAttribute = containingTypeSymbol
             .GetAttributes()
             .FirstOrDefault(attributeData => ToFullyQualifiedName(attributeData.AttributeClass) == lensOfAttributeName);
         if (lensOfAttribute is null)
         {
-            return null;
+            return LensOfAttributeContext.Empty;
         }
 
-        if (!visitedTypes.Add(typeSymbol))
+        if (!visitedTypes.Add(containingTypeSymbol))
         {
-            return null;
+            return LensOfAttributeContext.Empty;
         }
 
-        var targetTypeSymbol = lensOfAttribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
-            ? symbolArgument
-            : typeSymbol.ContainingType;
+        var diagnosticsBuilder = ImmutableArray.CreateBuilder<Diagnostic>();
 
-        return targetTypeSymbol == null ? null : new LensOfContext(
-            ContainingTypeSymbol: typeSymbol,
-            TargetTypeSymbol: targetTypeSymbol
+        if (!containingTypeSymbol.IsStatic)
+        {
+            diagnosticsBuilder.Add(Diagnostic.Create(
+                descriptor: LensOfAttributeMustBeOnStaticClassRule,
+                location: lensOfAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                messageArgs: [containingTypeSymbol]
+            ));
+
+            return LensOfAttributeContext.Empty with
+            {
+                Diagnostics = diagnosticsBuilder.ToImmutable(),
+            };
+        }
+
+        var typeSymbol = lensOfAttribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
+            ? symbolArgument
+            : containingTypeSymbol.ContainingType;
+
+        if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
+        {
+            diagnosticsBuilder.Add(Diagnostic.Create(
+                descriptor: LensOfAttributeTargetMustSupportWithExpressionRule,
+                location: lensOfAttribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                messageArgs: [typeSymbol]
+            ));
+
+            return LensOfAttributeContext.Empty with
+            {
+                Diagnostics = diagnosticsBuilder.ToImmutable(),
+            };
+        }
+
+        return new LensOfAttributeContext(
+            ContainingTypeSymbol: containingTypeSymbol,
+            TypeSymbol: typeSymbol,
+            Diagnostics: diagnosticsBuilder.ToImmutable()
         );
     }
 
@@ -210,11 +317,20 @@ internal static class Helpers
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
-        ImmutableArray<INamedTypeSymbol> lensTypeSymbols,
+        ImmutableArray<LensOfTypeContext> lensOfTypeContexts,
         Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
     )
     {
-        var uniqueTypeSymbols = lensTypeSymbols.Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default).ToArray();
+        foreach (var diagnostic in lensOfTypeContexts.SelectMany(context => context.Diagnostics))
+        {
+            sourceProductionContext.ReportDiagnostic(diagnostic);
+        }
+
+        var uniqueTypeSymbols = lensOfTypeContexts
+            .Select(context => context.Symbol)
+            .Where(symbol => symbol != null)!
+            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
+            .ToImmutableArray();
         if (uniqueTypeSymbols.Length == 0)
         {
             return;
@@ -223,8 +339,8 @@ internal static class Helpers
         var stringBuilder = CreateStringBuilderWithFileHeader();
 
         // begin namespace
-        stringBuilder.AppendLine("namespace Macaron.Optics");
-        stringBuilder.AppendLine("{");
+        stringBuilder.AppendLine($"namespace Macaron.Optics");
+        stringBuilder.AppendLine($"{{");
 
         // begin extension methods
         stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
@@ -273,10 +389,10 @@ internal static class Helpers
         }
 
         // end extension methods
-        stringBuilder.AppendLine("    }");
+        stringBuilder.AppendLine($"    }}");
 
         // end namespace
-        stringBuilder.AppendLine("}");
+        stringBuilder.AppendLine($"}}");
 
         sourceProductionContext.AddSource(
             hintName: $"{lensOfTypeName}Extensions.g.cs",
@@ -286,11 +402,22 @@ internal static class Helpers
 
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
-        LensOfContext lensOfContext,
+        LensOfAttributeContext lensOfAttributeContext,
         Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
     )
     {
-        var (containingTypeSymbol, targetTypeSymbol) = lensOfContext;
+        var (containingTypeSymbol, typeSymbol, diagnostics) = lensOfAttributeContext;
+
+        foreach (var diagnostic in diagnostics)
+        {
+            sourceProductionContext.ReportDiagnostic(diagnostic);
+        }
+
+        if (containingTypeSymbol == null || typeSymbol == null)
+        {
+            return;
+        }
+
         var stringBuilder = CreateStringBuilderWithFileHeader();
 
         // begin namespace
@@ -327,8 +454,8 @@ internal static class Helpers
         stringBuilder.AppendLine($"{depthSpacerText}{GetPartialTypeDeclarationString(containingTypeSymbol)}");
         stringBuilder.AppendLine($"{depthSpacerText}{{");
 
-        // generate targetType members
-        var members = generateLensOfMembers(targetTypeSymbol);
+        // write members
+        var members = generateLensOfMembers(typeSymbol);
 
         depthSpacerText += "    ";
 
@@ -350,7 +477,7 @@ internal static class Helpers
 
         depthSpacerText = depthSpacerText[..^4];
 
-        // end containedType
+        // end containingType
         stringBuilder.AppendLine($"{depthSpacerText}}}");
 
         // end nestedTypes
@@ -368,7 +495,7 @@ internal static class Helpers
         }
 
         sourceProductionContext.AddSource(
-            hintName: GetHintName(targetTypeSymbol),
+            hintName: GetHintName(typeSymbol),
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
         );
 

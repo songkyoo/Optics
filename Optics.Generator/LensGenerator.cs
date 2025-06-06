@@ -11,22 +11,23 @@ public class LensGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var lensOfCalls = context
+        var valueProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is InvocationExpressionSyntax,
-                transform: static (generatorSyntaxContext, _) => GetLensOfType(generatorSyntaxContext, LensTypeName)
+                transform: static (generatorSyntaxContext, _) => GetLensOfTypeContext(
+                    generatorSyntaxContext,
+                    LensTypeName
+                )
             )
-            .Where(static typeName => typeName is not null)
-            .Select(static (typeName, _) => typeName!)
             .Collect();
 
         context.RegisterSourceOutput(
-            source: lensOfCalls,
-            action: (sourceProductionContext, lensTypeSymbols) => AddSource(
+            source: valueProvider,
+            action: (sourceProductionContext, lensOfTypeContextx) => AddSource(
                 sourceProductionContext: sourceProductionContext,
                 lensOfTypeName: "LensOf",
-                lensTypeSymbols: lensTypeSymbols,
+                lensOfTypeContexts: lensOfTypeContextx,
                 generateLensOfMembers: GenerateLensOfMembers
             )
         );

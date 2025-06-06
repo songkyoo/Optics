@@ -33,7 +33,9 @@ public class LensOfGenerator : IIncrementalGenerator
                 }
             }
         }
+
         """;
+
     private const string LensOfAttributeName = "global::Macaron.Optics.LensOfAttribute";
     #endregion
 
@@ -46,7 +48,7 @@ public class LensOfGenerator : IIncrementalGenerator
         });
 
         var visitedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        IncrementalValuesProvider<LensOfContext> valuesProvider = context
+        IncrementalValuesProvider<LensOfAttributeContext> valuesProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
@@ -55,14 +57,13 @@ public class LensOfGenerator : IIncrementalGenerator
                     LensOfAttributeName,
                     visitedTypes
                 )
-            )
-            .Where(static lensOfContext => lensOfContext != null)!;
+            );
 
         context.RegisterSourceOutput(
             source: valuesProvider,
-            action: (sourceProductionContext, lensOfContext) => AddSource(
+            action: (sourceProductionContext, lensOfAttributeContext) => AddSource(
                 sourceProductionContext: sourceProductionContext,
-                lensOfContext: lensOfContext,
+                lensOfAttributeContext: lensOfAttributeContext,
                 generateLensOfMembers: GenerateLensOfMembers
             )
         );

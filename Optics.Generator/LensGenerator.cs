@@ -1,4 +1,5 @@
-﻿using Microsoft.CodeAnalysis;
+﻿using System.Collections.Immutable;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static Macaron.Optics.Generator.Helpers;
@@ -15,22 +16,48 @@ public class LensGenerator : IIncrementalGenerator
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is InvocationExpressionSyntax,
-                transform: static (generatorSyntaxContext, _) => GetLensOfTypeContext(
-                    generatorSyntaxContext,
-                    LensTypeName
-                )
+                transform: static (generatorSyntaxContext, _) => GetTypeContext(generatorSyntaxContext)
             )
             .Collect();
 
         context.RegisterSourceOutput(
             source: valueProvider,
-            action: (sourceProductionContext, lensOfTypeContextx) => AddSource(
-                sourceProductionContext: sourceProductionContext,
-                lensOfTypeName: "LensOf",
-                lensOfTypeContexts: lensOfTypeContextx,
-                generateLensOfMembers: GenerateLensOfMembers
-            )
-        );
+            action: (sourceProductionContext, typeContexts) =>
+            {
+                foreach (var diagnostic in typeContexts.SelectMany(static context => context.Diagnostics))
+                {
+                    sourceProductionContext.ReportDiagnostic(diagnostic);
+                }
+
+                var lensOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+                var optionalOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+
+                foreach (var typeContext in typeContexts)
+                {
+                    switch (typeContext)
+                    {
+                        case LensOfTypeContext { Symbol: { } symbol }:
+                            lensOfTypeSymbolsBuilder.Add(symbol);
+                            break;
+                        case OptionalOfTypeContext { Symbol: { } symbol }:
+                            optionalOfTypeSymbolsBuilder.Add(symbol);
+                            break;
+                    }
+                }
+
+                AddSource(
+                    sourceProductionContext: sourceProductionContext,
+                    lensOfTypeName: "LensOf",
+                    typeSymbols: lensOfTypeSymbolsBuilder.ToImmutable(),
+                    generateLensOfMembers: GenerateLensOfMembers
+                );
+                AddSource(
+                    sourceProductionContext: sourceProductionContext,
+                    lensOfTypeName: "OptionalOf",
+                    typeSymbols: optionalOfTypeSymbolsBuilder.ToImmutable(),
+                    generateLensOfMembers: GenerateOptionalOfMembers
+                );
+            });
     }
     #endregion
 }

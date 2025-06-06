@@ -9,9 +9,9 @@ namespace Macaron.Optics.Generator;
 internal static class Helpers
 {
     #region Constants
-    public const string LensTypeName = "global::Macaron.Optics.Lens";
-    public const string OptionalTypeName = "global::Macaron.Optics.Optional";
-    private const string MaybeTypeName = "global::Macaron.Functional.Maybe";
+    private const string LensOfTypeString = "global::Macaron.Optics.Lens";
+    private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
+    private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
     #endregion
 
     #region Types
@@ -30,18 +30,26 @@ internal static class Helpers
         #endregion
     }
 
-    public sealed record LensOfTypeContext(
-        INamedTypeSymbol? Symbol,
+    public record TypeContext(
         ImmutableArray<Diagnostic> Diagnostics
     )
     {
         #region Static
-        public static readonly LensOfTypeContext Empty = new(
-            Symbol: null,
+        public static readonly TypeContext Empty = new(
             Diagnostics: ImmutableArray<Diagnostic>.Empty
         );
         #endregion
     }
+
+    public sealed record LensOfTypeContext(
+        INamedTypeSymbol Symbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    ) : TypeContext(Diagnostics);
+
+    public sealed record OptionalOfTypeContext(
+        INamedTypeSymbol Symbol,
+        ImmutableArray<Diagnostic> Diagnostics
+    ) : TypeContext(Diagnostics);
     #endregion
 
     #region Diagnostics
@@ -80,38 +88,45 @@ internal static class Helpers
     #endregion
 
     #region Methods
-    public static LensOfTypeContext GetLensOfTypeContext(
-        GeneratorSyntaxContext generatorSyntaxContext,
-        string containingType
-    )
+    public static TypeContext GetTypeContext(GeneratorSyntaxContext generatorSyntaxContext)
     {
-        var genericNameSyntax = GetGenericNameFromInvocation((InvocationExpressionSyntax)generatorSyntaxContext.Node);
-        if (genericNameSyntax is null)
+        if (generatorSyntaxContext.Node is not InvocationExpressionSyntax expressionSyntax)
         {
-            return LensOfTypeContext.Empty;
+            return TypeContext.Empty;
+        }
+
+        if (GetGenericNameFromInvocation(expressionSyntax) is not { } genericNameSyntax)
+        {
+            return TypeContext.Empty;
         }
 
         var semanticModel = generatorSyntaxContext.SemanticModel;
         var methodSymbol = semanticModel.GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
-        if (methodSymbol?.IsStatic is not true ||
-            methodSymbol.Name != "Of" ||
-            ToFullyQualifiedName(methodSymbol.ContainingType) != containingType
-        )
+        if (methodSymbol?.IsStatic is not true || methodSymbol.Name != "Of")
         {
-            return LensOfTypeContext.Empty;
+            return TypeContext.Empty;
         }
 
         var typeArgumentList = genericNameSyntax.TypeArgumentList;
-        if (typeArgumentList.Arguments.Count != 1)
+        if (typeArgumentList.Arguments is not [{ } typeArgument] ||
+            semanticModel.GetSymbolInfo(typeArgument).Symbol is not INamedTypeSymbol typeSymbol
+        )
         {
-            return LensOfTypeContext.Empty;
+            return TypeContext.Empty;
         }
 
-        var typeArgument = genericNameSyntax.TypeArgumentList.Arguments[0];
-        var symbolInfo = semanticModel.GetSymbolInfo(typeArgument);
-        if (symbolInfo.Symbol is not INamedTypeSymbol typeSymbol)
+        const int lensOfType = 1;
+        const int optionalOfType = 2;
+
+        var type = ToFullyQualifiedName(methodSymbol.ContainingType) switch
         {
-            return LensOfTypeContext.Empty;
+            LensOfTypeString => lensOfType,
+            OptionalOfTypeString => optionalOfType,
+            _ => 0,
+        };
+        if (type == 0)
+        {
+            return TypeContext.Empty;
         }
 
         // Nullable한 형식은 지원하지 않는다.
@@ -119,7 +134,7 @@ internal static class Helpers
             typeArgument.ToString().EndsWith("?")
         )
         {
-            return LensOfTypeContext.Empty with
+            return TypeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
                     descriptor: LensTargetTypeCannotBeNullableRule,
@@ -132,7 +147,7 @@ internal static class Helpers
         // with 문을 지원하는 형식만 사용한다.
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return LensOfTypeContext.Empty with
+            return TypeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
                     descriptor: LensTargetTypeMustSupportWithExpressionRule,
@@ -142,10 +157,18 @@ internal static class Helpers
             };
         }
 
-        return new LensOfTypeContext(
-            Symbol: typeSymbol,
-            Diagnostics: ImmutableArray<Diagnostic>.Empty
-        );
+        return type switch
+        {
+            lensOfType => new LensOfTypeContext(
+                Symbol: typeSymbol,
+                Diagnostics: ImmutableArray<Diagnostic>.Empty
+            ),
+            optionalOfType => new OptionalOfTypeContext(
+                Symbol: typeSymbol,
+                Diagnostics: ImmutableArray<Diagnostic>.Empty
+            ),
+            _ => throw new InvalidOperationException($"Invalid type: {type}"),
+        };
 
         #region Local Functions
         static GenericNameSyntax? GetGenericNameFromInvocation(
@@ -235,16 +258,16 @@ internal static class Helpers
             getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
             {
                 var memberDeclaration = isNullable
-                    ? $"{LensTypeName}<{typeName}, {MaybeTypeName}<{memberTypeName}>> {memberName}"
-                    : $"{LensTypeName}<{typeName}, {memberTypeName}> {memberName}";
+                    ? $"{LensOfTypeString}<{typeName}, {MaybeTypeString}<{memberTypeName}>> {memberName}"
+                    : $"{LensOfTypeString}<{typeName}, {memberTypeName}> {memberName}";
 
                 var lines = isNullable
                     ? new List<string>
                     {
-                        $"{LensTypeName}<{typeName}, {MaybeTypeName}<{memberTypeName}>>.Of(",
+                        $"{LensOfTypeString}<{typeName}, {MaybeTypeString}<{memberTypeName}>>.Of(",
                         $"    getter: static source => source is {{ {memberName}: {{ }} value }}",
-                        $"        ? {MaybeTypeName}.Just(value)",
-                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"        ? {MaybeTypeString}.Just(value)",
+                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
                         $"    setter: static (source, value) => source with",
                         $"    {{",
                         $"        {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
@@ -253,7 +276,7 @@ internal static class Helpers
                     }
                     :  new List<string>
                     {
-                        $"{LensTypeName}<{typeName}, {memberTypeName}>.Of(",
+                        $"{LensOfTypeString}<{typeName}, {memberTypeName}>.Of(",
                         $"    getter: static source => source.{memberName},",
                         $"    setter: static (source, value) => source with",
                         $"    {{",
@@ -276,36 +299,36 @@ internal static class Helpers
             getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
             {
                 var memberDeclaration = isNullable
-                    ? $"{LensTypeName}<{MaybeTypeName}<{typeName}>, {MaybeTypeName}<{memberTypeName}>> {memberName}"
-                    : $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}> {memberName}";
+                    ? $"{LensOfTypeString}<{MaybeTypeString}<{typeName}>, {MaybeTypeString}<{memberTypeName}>> {memberName}"
+                    : $"{OptionalOfTypeString}<{MaybeTypeString}<{typeName}>, {memberTypeName}> {memberName}";
 
                 var lines = isNullable
                     ? ImmutableArray.Create(
-                        $"{LensTypeName}<{MaybeTypeName}<{typeName}>, {MaybeTypeName}<{memberTypeName}>>.Of(",
+                        $"{LensOfTypeString}<{MaybeTypeString}<{typeName}>, {MaybeTypeString}<{memberTypeName}>>.Of(",
                         $"    getter: static source => source is {{ IsJust: true, Value: {{ }} value }}",
                         $"        ? value.{memberName} is {{ }} value2",
-                        $"            ? {MaybeTypeName}.Just(value2)",
-                        $"            : {MaybeTypeName}.Nothing<{memberTypeName}>()",
-                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"            ? {MaybeTypeString}.Just(value2)",
+                        $"            : {MaybeTypeString}.Nothing<{memberTypeName}>()",
+                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
                         $"    setter: static (source, value) => source.IsJust",
-                        $"        ? {MaybeTypeName}.Just(source.Value with",
+                        $"        ? {MaybeTypeString}.Just(source.Value with",
                         $"        {{",
                         $"            {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
                         $"        }})",
-                        $"        : {MaybeTypeName}.Nothing<{typeName}>()",
+                        $"        : {MaybeTypeString}.Nothing<{typeName}>()",
                         $");"
                     )
                     : ImmutableArray.Create(
-                        $"{OptionalTypeName}<{MaybeTypeName}<{typeName}>, {memberTypeName}>.Of(",
+                        $"{OptionalOfTypeString}<{MaybeTypeString}<{typeName}>, {memberTypeName}>.Of(",
                         $"    optionalGetter: static source => source.IsJust",
-                        $"        ? {MaybeTypeName}.Just(source.Value.{memberName})",
-                        $"        : {MaybeTypeName}.Nothing<{memberTypeName}>(),",
+                        $"        ? {MaybeTypeString}.Just(source.Value.{memberName})",
+                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
                         $"    setter: static (source, value) => source.IsJust",
-                        $"        ? {MaybeTypeName}.Just(source.Value with",
+                        $"        ? {MaybeTypeString}.Just(source.Value with",
                         $"        {{",
                         $"            {memberName} = value,",
                         $"        }})",
-                        $"        : {MaybeTypeName}.Nothing<{typeName}>()",
+                        $"        : {MaybeTypeString}.Nothing<{typeName}>()",
                         $");"
                     );
 
@@ -317,18 +340,11 @@ internal static class Helpers
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
-        ImmutableArray<LensOfTypeContext> lensOfTypeContexts,
+        ImmutableArray<INamedTypeSymbol> typeSymbols,
         Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateLensOfMembers
     )
     {
-        foreach (var diagnostic in lensOfTypeContexts.SelectMany(context => context.Diagnostics))
-        {
-            sourceProductionContext.ReportDiagnostic(diagnostic);
-        }
-
-        var uniqueTypeSymbols = lensOfTypeContexts
-            .Select(context => context.Symbol)
-            .Where(symbol => symbol != null)!
+        var uniqueTypeSymbols = typeSymbols
             .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
             .ToImmutableArray();
         if (uniqueTypeSymbols.Length == 0)

@@ -2,12 +2,15 @@
 
   <PropertyGroup>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <LangVersion>latest</LangVersion>
+    <NoWarn>NU5128</NoWarn>
+    <Nullable>enable</Nullable>
     <TargetFramework>netstandard2.1</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup>
     <PackageId>Macaron.Optics</PackageId>
-    <Version>1.0.6</Version>
+    <Version>1.0.7</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
@@ -15,8 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Macaron.Optics.Core" Version="1.0.4" />
-    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.4" />
+    <PackageReference Include="Macaron.Optics.Core" Version="1.0.6" />
+    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.6" />
   </ItemGroup>
 
 </Project>

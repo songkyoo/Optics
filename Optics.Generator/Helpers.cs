@@ -546,7 +546,7 @@ internal static class Helpers
         {
             if (typeSymbol.IsRecord)
             {
-                return "record";
+                return typeSymbol.TypeKind is TypeKind.Struct ? "record struct" : "record";
             }
 
             return typeSymbol.TypeKind switch

@@ -1,8 +1,13 @@
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+
+using static Microsoft.CodeAnalysis.CSharp.SyntaxFacts;
+using static Microsoft.CodeAnalysis.SymbolDisplayFormat;
+using static Microsoft.CodeAnalysis.SymbolDisplayMiscellaneousOptions;
 
 namespace Macaron.Optics.Generator;
 
@@ -11,8 +16,8 @@ internal static class Helpers
     #region Constants
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
-    private const string LensOfAttributeName = "global::Macaron.Optics.LensOfAttribute";
-    private const string OptionalOfAttributeName = "global::Macaron.Optics.OptionalOfAttribute";
+    private const string LensOfAttributeName = "Macaron.Optics.LensOfAttribute";
+    private const string OptionalOfAttributeName = "Macaron.Optics.OptionalOfAttribute";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
     #endregion
 
@@ -128,7 +133,7 @@ internal static class Helpers
         const int lensOfType = 1;
         const int optionalOfType = 2;
 
-        var type = ToFullyQualifiedName(methodSymbol.ContainingType) switch
+        var type = methodSymbol.ContainingType.ToDisplayString(FullyQualifiedFormat) switch
         {
             LensOfTypeString => lensOfType,
             OptionalOfTypeString => optionalOfType,
@@ -205,14 +210,14 @@ internal static class Helpers
             return AttributeContext.Empty;
         }
 
-        if (context.SemanticModel.GetDeclaredSymbol(declarationSyntax) is not INamedTypeSymbol containingTypeSymbol)
+        if (context.SemanticModel.GetDeclaredSymbol(declarationSyntax) is not { } containingTypeSymbol)
         {
             return AttributeContext.Empty;
         }
 
         var attribute = containingTypeSymbol
             .GetAttributes()
-            .FirstOrDefault(static attributeData => ToFullyQualifiedName(attributeData.AttributeClass)
+            .FirstOrDefault(static attributeData => attributeData.AttributeClass?.ToDisplayString()
                 is LensOfAttributeName
                 or OptionalOfAttributeName
             );
@@ -254,7 +259,7 @@ internal static class Helpers
             };
         }
 
-        return ToFullyQualifiedName(attribute.AttributeClass) switch
+        return attribute.AttributeClass?.ToDisplayString() switch
         {
             LensOfAttributeName => new LensOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
@@ -391,7 +396,7 @@ internal static class Helpers
                 continue;
             }
 
-            var typeName = ToFullyQualifiedName(typeSymbol)!;
+            var typeName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
 
             for (int j = 0; j < members.Length; ++j)
             {
@@ -524,7 +529,7 @@ internal static class Helpers
         }
 
         sourceProductionContext.AddSource(
-            hintName: GetHintName(typeSymbol),
+            hintName: GetHintName(containingTypeSymbol),
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
         );
 
@@ -532,7 +537,7 @@ internal static class Helpers
         static string GetPartialTypeDeclarationString(INamedTypeSymbol typeSymbol)
         {
             var typeKindString = GetTypeKindString(typeSymbol);
-            var typeNameString = typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var typeNameString = typeSymbol.ToDisplayString(MinimallyQualifiedFormat);
 
             return $"partial {typeKindString} {typeNameString}";
         }
@@ -556,7 +561,7 @@ internal static class Helpers
         static string GetHintName(INamedTypeSymbol typeSymbol)
         {
             var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
-            var qualifiedName = ToFullyQualifiedName(typeSymbol)!;
+            var qualifiedName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
 
             const uint fnvPrime = 16777619;
             const uint offsetBasis = 2166136261;
@@ -587,25 +592,30 @@ internal static class Helpers
         }
 
         var builder = ImmutableArray.CreateBuilder<(string, ImmutableArray<string>)>();
-        var typeName = ToFullyQualifiedName(typeSymbol)!;
+        var typeName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
 
         foreach (var member in members)
         {
-            var memberTypeName = GetMemberTypeName(member);
             var isNullable = IsNullable(member);
+            var memberTypeName = GetMemberTypeName(member, isNullable);
 
-            builder.Add(getSourceByMember(typeName, memberTypeName, member.Name, isNullable));
+            builder.Add(getSourceByMember(typeName, memberTypeName, GetEscapedKeyword(member.Name), isNullable));
         }
 
         return builder.ToImmutable();
 
         #region Local Functions
-        static string GetMemberTypeName(ISymbol symbol)
+        static string GetMemberTypeName(ISymbol symbol, bool isNullable)
         {
-            return ToFullyQualifiedName(GetUnderlyingType(symbol is IPropertySymbol propertySymbol
+            var underlyingType = GetUnderlyingType(symbol is IPropertySymbol propertySymbol
                 ? propertySymbol.Type
                 : ((IFieldSymbol)symbol).Type
-            ))!;
+            );
+            var format = FullyQualifiedFormat.WithMiscellaneousOptions(isNullable
+                ? None
+                : IncludeNullableReferenceTypeModifier
+            );
+            return underlyingType.ToDisplayString(format);
 
             #region Local Functions
             static ISymbol GetUnderlyingType(ISymbol symbol)
@@ -680,9 +690,11 @@ internal static class Helpers
         return stringBuilder;
     }
 
-    private static string? ToFullyQualifiedName(ISymbol? symbol)
+    private static string GetEscapedKeyword(string keyword)
     {
-        return symbol?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        return GetKeywordKind(keyword) != SyntaxKind.None || GetContextualKeywordKind(keyword) != SyntaxKind.None
+            ? "@" + keyword
+            : keyword;
     }
     #endregion
 }

@@ -79,7 +79,7 @@ internal static class Helpers
     private static readonly DiagnosticDescriptor LensTargetTypeMustSupportWithExpressionRule = new(
         id: "MOPT0002",
         title: "Lens target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used as a lens target.",
+        messageFormat: "Type '{0}' must be a record or struct to be used as a lens target",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -87,7 +87,7 @@ internal static class Helpers
     private static readonly DiagnosticDescriptor LensOfAttributeMustBeOnStaticClassRule = new(
         id: "MOPT0003",
         title: "LensOf attribute must be applied to a static class",
-        messageFormat: "Class '{0}' must be static to use LensOf attribute.",
+        messageFormat: "Class '{0}' must be static to use LensOf attribute",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -95,7 +95,7 @@ internal static class Helpers
     private static readonly DiagnosticDescriptor LensOfAttributeTargetMustSupportWithExpressionRule = new(
         id: "MOPT0004",
         title: "LensOf attribute target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used with LensOf attribute.",
+        messageFormat: "Type '{0}' must be a record or struct to be used with LensOf attribute",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true

@@ -561,7 +561,7 @@ public class LensOfGeneratorTests
             {
             }
             """,
-            expectedDiagnosticId: "MAOG0003"
+            expectedDiagnosticId: "MOPT0003"
         );
     }
 
@@ -583,7 +583,7 @@ public class LensOfGeneratorTests
             {
             }
             """,
-            expectedDiagnosticId: "MAOG0004"
+            expectedDiagnosticId: "MOPT0004"
         );
     }
 
@@ -605,7 +605,7 @@ public class LensOfGeneratorTests
             {
             }
             """,
-            expectedDiagnosticId: "MAOG0004"
+            expectedDiagnosticId: "MOPT0004"
         );
     }
 
@@ -1114,7 +1114,7 @@ public class LensOfGeneratorTests
             {
             }
             """,
-            expectedDiagnosticId: "MAOG0004"
+            expectedDiagnosticId: "MOPT0004"
         );
     }
 
@@ -1133,7 +1133,7 @@ public class LensOfGeneratorTests
             {
             }
             """,
-            expectedDiagnosticId: "MAOG0004"
+            expectedDiagnosticId: "MOPT0004"
         );
     }
 

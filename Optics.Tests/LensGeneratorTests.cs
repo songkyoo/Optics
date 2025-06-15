@@ -307,7 +307,7 @@ public class LensGeneratorTests
                 }
             }
             """,
-            expectedDiagnosticId: "MAOG0001"
+            expectedDiagnosticId: "MOPT0001"
         );
     }
 
@@ -332,7 +332,7 @@ public class LensGeneratorTests
                 }
             }
             """,
-            expectedDiagnosticId: "MAOG0002"
+            expectedDiagnosticId: "MOPT0002"
         );
     }
 
@@ -357,7 +357,7 @@ public class LensGeneratorTests
                 }
             }
             """,
-            expectedDiagnosticId: "MAOG0002"
+            expectedDiagnosticId: "MOPT0002"
         );
     }
 

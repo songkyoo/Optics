@@ -69,7 +69,7 @@ internal static class Helpers
 
     #region Diagnostics
     private static readonly DiagnosticDescriptor LensTargetTypeCannotBeNullableRule = new(
-        id: "MAOG0001",
+        id: "MOPT0001",
         title: "Lens target type cannot be nullable",
         messageFormat: "Type '{0}' is nullable. Nullable types are not supported as lens targets.",
         category: "Usage",
@@ -77,7 +77,7 @@ internal static class Helpers
         isEnabledByDefault: true
     );
     private static readonly DiagnosticDescriptor LensTargetTypeMustSupportWithExpressionRule = new(
-        id: "MAOG0002",
+        id: "MOPT0002",
         title: "Lens target type must support 'with' expression",
         messageFormat: "Type '{0}' must be a record or struct to be used as a lens target.",
         category: "Usage",
@@ -85,7 +85,7 @@ internal static class Helpers
         isEnabledByDefault: true
     );
     private static readonly DiagnosticDescriptor LensOfAttributeMustBeOnStaticClassRule = new(
-        id: "MAOG0003",
+        id: "MOPT0003",
         title: "LensOf attribute must be applied to a static class",
         messageFormat: "Class '{0}' must be static to use LensOf attribute.",
         category: "Usage",
@@ -93,7 +93,7 @@ internal static class Helpers
         isEnabledByDefault: true
     );
     private static readonly DiagnosticDescriptor LensOfAttributeTargetMustSupportWithExpressionRule = new(
-        id: "MAOG0004",
+        id: "MOPT0004",
         title: "LensOf attribute target type must support 'with' expression",
         messageFormat: "Type '{0}' must be a record or struct to be used with LensOf attribute.",
         category: "Usage",

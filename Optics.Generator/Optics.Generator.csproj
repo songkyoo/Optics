@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>Macaron.Optics.Generator</AssemblyName>
     <AnalyzerLanguage>cs</AnalyzerLanguage>
     <DevelopmentDependency>true</DevelopmentDependency>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
@@ -18,7 +19,7 @@
 
   <PropertyGroup>
     <PackageId>Macaron.Optics.Generator</PackageId>
-    <Version>1.0.6</Version>
+    <Version>1.0.7</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
@@ -26,7 +27,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="bin\$(Configuration)\netstandard2.0\Optics.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+    <None Include="bin\$(Configuration)\netstandard2.0\Macaron.Optics.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
   </ItemGroup>
 
   <ItemGroup>

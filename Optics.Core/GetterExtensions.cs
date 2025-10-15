@@ -13,7 +13,7 @@ public static class GetterExtensions
         {
             var value0 = source;
             var value1 = getter.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+            var value2 = optionalGetter(value1);
 
             return value2;
         });
@@ -43,7 +43,7 @@ public static class GetterExtensions
         {
             var value0 = source;
             var value1 = getter1.Get(value0);
-            var value2 = getter2.Invoke(value1);
+            var value2 = getter2(value1);
 
             return value2;
         });

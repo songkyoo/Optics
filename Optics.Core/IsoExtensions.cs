@@ -13,7 +13,7 @@ public static class IsoExtensions
         {
             var value0 = source;
             var value1 = iso.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+            var value2 = optionalGetter(value1);
 
             return value2;
         });
@@ -43,7 +43,7 @@ public static class IsoExtensions
         {
             var value0 = source;
             var value1 = iso.Get(value0);
-            var value2 = getter.Invoke(value1);
+            var value2 = getter(value1);
 
             return value2;
         });
@@ -71,7 +71,7 @@ public static class IsoExtensions
     {
         return Constructor<T, TValue2>.Of(constructor: value =>
         {
-            var newValue1 = constructor.Invoke(value);
+            var newValue1 = constructor(value);
             var newValue0 = iso.Construct(newValue1);
 
             return newValue0;
@@ -204,12 +204,12 @@ public static class IsoExtensions
             getter: source =>
             {
                 var value = iso.Get(source);
-                return mapGet != null ? mapGet.Invoke(source, value) : value;
+                return mapGet != null ? mapGet(source, value) : value;
             },
             constructor: value =>
             {
                 var source = iso.Construct(value);
-                return mapConstruct != null ? mapConstruct.Invoke(value, source) : source;
+                return mapConstruct != null ? mapConstruct(value, source) : source;
             }
         );
     }
@@ -224,12 +224,12 @@ public static class IsoExtensions
             getter: source =>
             {
                 var value = iso.Get(source);
-                return mapGet != null ? mapGet.Invoke(value) : value;
+                return mapGet != null ? mapGet(value) : value;
             },
             constructor: value =>
             {
                 var source = iso.Construct(value);
-                return mapConstruct != null ? mapConstruct.Invoke(source) : source;
+                return mapConstruct != null ? mapConstruct(source) : source;
             }
         );
     }

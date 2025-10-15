@@ -15,7 +15,7 @@ public static class OptionalGetterExtensions
         {
             var value0 = source;
             var value1 = optionalGetter1.Get(value0);
-            var value2 = optionalGetter2.Invoke(value1);
+            var value2 = optionalGetter2(value1);
 
             return value2;
         });
@@ -45,7 +45,7 @@ public static class OptionalGetterExtensions
         {
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
-            var value2 = getter.Invoke(value1);
+            var value2 = getter(value1);
 
             return value2;
         });

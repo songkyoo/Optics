@@ -15,7 +15,7 @@ public static class PrismExtensions
         {
             var value0 = source;
             var value1 = prism.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+            var value2 = optionalGetter(value1);
 
             return value2;
         });
@@ -45,7 +45,7 @@ public static class PrismExtensions
         {
             var value0 = source;
             var value1 = prism.Get(value0);
-            var value2 = getter.Invoke(value1);
+            var value2 = getter(value1);
 
             return value2;
         });
@@ -73,7 +73,7 @@ public static class PrismExtensions
     {
         return Constructor<T, TValue2>.Of(constructor: value =>
         {
-            var newValue1 = constructor.Invoke(value);
+            var newValue1 = constructor(value);
             var newValue0 = prism.Construct(newValue1);
 
             return newValue0;
@@ -213,7 +213,7 @@ public static class PrismExtensions
             constructor: value =>
             {
                 var source = prism.Construct(value);
-                return mapConstruct != null ? mapConstruct.Invoke(value, source) : source;
+                return mapConstruct != null ? mapConstruct(value, source) : source;
             }
         );
     }
@@ -238,7 +238,7 @@ public static class PrismExtensions
             constructor: value =>
             {
                 var source = prism.Construct(value);
-                return mapConstruct != null ? mapConstruct.Invoke(source) : source;
+                return mapConstruct != null ? mapConstruct(source) : source;
             }
         );
     }

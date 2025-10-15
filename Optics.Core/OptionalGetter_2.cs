@@ -17,6 +17,6 @@ public readonly struct OptionalGetter<T, TValue>(
     #endregion
 
     #region Methods
-    public Maybe<TValue> Get(T source) => get.Invoke(source);
+    public Maybe<TValue> Get(T source) => get(source);
     #endregion
 }

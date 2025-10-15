@@ -17,15 +17,15 @@ public readonly struct Optional<T, TValue>(
         new(optionalGetter.Get, setter.Set);
 
     public static Optional<T, TValue> Of(Func<T, TValue> getter, Func<T, TValue, T> setter) =>
-        new(source => Just(getter.Invoke(source)), setter);
+        new(source => Just(getter(source)), setter);
 
     public static Optional<T, TValue> Of(Getter<T, TValue> getter, Setter<T, TValue> setter) =>
         new(source => Just(getter.Get(source)), setter.Set);
     #endregion
 
     #region Methods
-    public Maybe<TValue> Get(T source) => get.Invoke(source);
+    public Maybe<TValue> Get(T source) => get(source);
 
-    public T Set(T source, TValue value) => set.Invoke(source, value);
+    public T Set(T source, TValue value) => set(source, value);
     #endregion
 }

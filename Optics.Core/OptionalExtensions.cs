@@ -15,7 +15,7 @@ public static class OptionalExtensions
         {
             var value0 = source;
             var value1 = optional.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+            var value2 = optionalGetter(value1);
 
             return value2;
         });
@@ -45,7 +45,7 @@ public static class OptionalExtensions
         {
             var value0 = source;
             var value1 = optional.Get(value0);
-            var value2 = getter.Invoke(value1);
+            var value2 = getter(value1);
 
             return value2;
         });
@@ -364,7 +364,7 @@ public static class OptionalExtensions
             },
             setter: (source, value) =>
             {
-                return optional.Set(source, mapSet != null ? mapSet.Invoke(source, value) : value);
+                return optional.Set(source, mapSet != null ? mapSet(source, value) : value);
             }
         );
     }
@@ -388,7 +388,7 @@ public static class OptionalExtensions
             },
             setter: (source, value) =>
             {
-                return optional.Set(source, mapSet != null ? mapSet.Invoke(value) : value);
+                return optional.Set(source, mapSet != null ? mapSet(value) : value);
             }
         );
     }
@@ -405,7 +405,7 @@ public static class OptionalExtensions
             return source;
         }
 
-        var newValue = modifier.Invoke(source, value.Value);
+        var newValue = modifier(source, value.Value);
         if (newValue.IsNothing)
         {
             return source;
@@ -427,7 +427,7 @@ public static class OptionalExtensions
             return source;
         }
 
-        var newValue = modifier.Invoke(value.Value);
+        var newValue = modifier(value.Value);
         if (newValue.IsNothing)
         {
             return source;

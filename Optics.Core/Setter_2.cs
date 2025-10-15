@@ -9,6 +9,6 @@ public readonly struct Setter<T, TValue>(
     #endregion
 
     #region Methods
-    public T Set(T source, TValue value) => set.Invoke(source, value);
+    public T Set(T source, TValue value) => set(source, value);
     #endregion
 }

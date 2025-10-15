@@ -13,8 +13,8 @@ public readonly struct Iso<T, TValue>(
     #endregion
 
     #region Methods
-    public TValue Get(T source) => get.Invoke(source);
+    public TValue Get(T source) => get(source);
 
-    public T Construct(TValue value) => construct.Invoke(value);
+    public T Construct(TValue value) => construct(value);
     #endregion
 }

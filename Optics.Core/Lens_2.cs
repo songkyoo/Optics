@@ -13,8 +13,8 @@ public readonly struct Lens<T, TValue>(
     #endregion
 
     #region Methods
-    public TValue Get(T source) => get.Invoke(source);
+    public TValue Get(T source) => get(source);
 
-    public T Set(T source, TValue value) => set.Invoke(source, value);
+    public T Set(T source, TValue value) => set(source, value);
     #endregion
 }

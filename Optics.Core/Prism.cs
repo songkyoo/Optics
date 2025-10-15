@@ -16,7 +16,7 @@ public static class Prism
     ) => new(optionalGetter.Get, constructor.Construct);
 
     public static Prism<T, TValue> Of<T, TValue>(Func<T, TValue> getter, Func<TValue, T> constructor) =>
-        new(source => Just(getter.Invoke(source)), constructor);
+        new(source => Just(getter(source)), constructor);
 
     public static Prism<T, TValue> Of<T, TValue>(Getter<T, TValue> getter, Constructor<T, TValue> constructor) =>
         new(source => Just(getter.Get(source)), constructor.Construct);

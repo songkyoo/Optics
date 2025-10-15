@@ -9,6 +9,6 @@ public readonly struct Getter<T, TValue>(
     #endregion
 
     #region Methods
-    public TValue Get(T source) => get.Invoke(source);
+    public TValue Get(T source) => get(source);
     #endregion
 }

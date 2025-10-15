@@ -9,6 +9,6 @@ public readonly struct Constructor<T, TValue>(
     #endregion
 
     #region Methods
-    public T Construct(TValue value) => construct.Invoke(value);
+    public T Construct(TValue value) => construct(value);
     #endregion
 }

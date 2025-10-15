@@ -13,7 +13,7 @@ public static class LensExtensions
         {
             var value0 = source;
             var value1 = lens.Get(value0);
-            var value2 = optionalGetter.Invoke(value1);
+            var value2 = optionalGetter(value1);
 
             return value2;
         });
@@ -43,7 +43,7 @@ public static class LensExtensions
         {
             var value0 = source;
             var value1 = lens.Get(value0);
-            var value2 = getter.Invoke(value1);
+            var value2 = getter(value1);
 
             return value2;
         });
@@ -152,11 +152,11 @@ public static class LensExtensions
             getter: source =>
             {
                 var value = lens.Get(source);
-                return mapGet != null ? mapGet.Invoke(source, value) : value;
+                return mapGet != null ? mapGet(source, value) : value;
             },
             setter: (source, value) =>
             {
-                return lens.Set(source, mapSet != null ? mapSet.Invoke(source, value) : value);
+                return lens.Set(source, mapSet != null ? mapSet(source, value) : value);
             }
         );
     }
@@ -171,11 +171,11 @@ public static class LensExtensions
             getter: source =>
             {
                 var value = lens.Get(source);
-                return mapGet != null ? mapGet.Invoke(value) : value;
+                return mapGet != null ? mapGet(value) : value;
             },
             setter: (source, value) =>
             {
-                return lens.Set(source, mapSet != null ? mapSet.Invoke(value) : value);
+                return lens.Set(source, mapSet != null ? mapSet(value) : value);
             }
         );
     }
@@ -187,7 +187,7 @@ public static class LensExtensions
     )
     {
         var value = lens.Get(source);
-        var newValue = modifier.Invoke(source, value);
+        var newValue = modifier(source, value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;
@@ -200,7 +200,7 @@ public static class LensExtensions
     )
     {
         var value = lens.Get(source);
-        var newValue = modifier.Invoke(value);
+        var newValue = modifier(value);
         var newSource = lens.Set(source, newValue);
 
         return newSource;

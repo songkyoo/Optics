@@ -11,7 +11,7 @@ public static class ConstructorExtensions
     {
         return Constructor<T, TValue2>.Of(constructor: value =>
         {
-            var newValue1 = constructor2.Invoke(value);
+            var newValue1 = constructor2(value);
             var newValue0 = constructor1.Construct(newValue1);
 
             return newValue0;

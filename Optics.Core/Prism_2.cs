@@ -17,15 +17,15 @@ public readonly struct Prism<T, TValue>(
         new(optionalGetter.Get, constructor.Construct);
 
     public static Prism<T, TValue> Of(Func<T, TValue> getter, Func<TValue, T> constructor) =>
-        new(source => Just(getter.Invoke(source)), constructor);
+        new(source => Just(getter(source)), constructor);
 
     public static Prism<T, TValue> Of(Getter<T, TValue> getter, Constructor<T, TValue> constructor) =>
         new(source => Just(getter.Get(source)), constructor.Construct);
     #endregion
 
     #region Methods
-    public Maybe<TValue> Get(T source) => get.Invoke(source);
+    public Maybe<TValue> Get(T source) => get(source);
 
-    public T Construct(TValue value) => construct.Invoke(value);
+    public T Construct(TValue value) => construct(value);
     #endregion
 }

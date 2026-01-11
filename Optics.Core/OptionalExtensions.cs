@@ -191,7 +191,7 @@ public static class OptionalExtensions
             {
                 var value0 = source;
                 var value1 = optional.Get(value0);
-                var value2 = lens.Get(value1.GetOrElse(getDefaultValue()));
+                var value2 = lens.Get(value1 is { IsJust: true } just ? just.Value : getDefaultValue());
 
                 return value2;
             },

@@ -100,6 +100,14 @@ internal static class Helpers
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
+    private static readonly DiagnosticDescriptor OpticsAttributeTargetMustBeSpecifiedRule = new(
+        id: "MOPT0005",
+        title: "Target type must be specified for optics attribute",
+        messageFormat: "Class '{0}' is not nested in a target type. Specify the target type explicitly.",
+        category: "Usage",
+        DiagnosticSeverity.Error,
+        isEnabledByDefault: true
+    );
     #endregion
 
     #region Methods
@@ -238,6 +246,18 @@ internal static class Helpers
         var typeSymbol = attribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
             ? symbolArgument
             : containingTypeSymbol.ContainingType;
+
+        if (typeSymbol is null)
+        {
+            return AttributeContext.Empty with
+            {
+                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+                    descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
+                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    messageArgs: [containingTypeSymbol]
+                )),
+            };
+        }
 
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {

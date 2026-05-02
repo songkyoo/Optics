@@ -1138,6 +1138,40 @@ public class LensOfGeneratorTests
     }
 
     [Test]
+    public void When_LensOfAttributeWithoutTypeArgumentOnTopLevelClass_Should_ReportError()
+    {
+        AssertDiagnostic(
+            sourceCode:
+            """
+            namespace Macaron.Optics.Tests;
+
+            [LensOf]
+            public static partial class PersonLens
+            {
+            }
+            """,
+            expectedDiagnosticId: "MOPT0005"
+        );
+    }
+
+    [Test]
+    public void When_OptionalOfAttributeWithoutTypeArgumentOnTopLevelClass_Should_ReportError()
+    {
+        AssertDiagnostic(
+            sourceCode:
+            """
+            namespace Macaron.Optics.Tests;
+
+            [OptionalOf]
+            public static partial class PersonOptional
+            {
+            }
+            """,
+            expectedDiagnosticId: "MOPT0005"
+        );
+    }
+
+    [Test]
     public void When_RecordWithStaticMembers_Should_IgnoreStaticMembers()
     {
         AssertGeneratedCode(

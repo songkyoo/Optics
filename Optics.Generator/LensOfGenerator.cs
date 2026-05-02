@@ -11,53 +11,76 @@ public class LensOfGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var visitedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-        IncrementalValuesProvider<AttributeContext> valuesProvider = context
+        var valuesProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
-                transform: (generatorSyntaxContext, _) => GetAttributeContext(generatorSyntaxContext, visitedTypes)
+                transform: static (generatorSyntaxContext, _) => GetAttributeContext(generatorSyntaxContext)
             );
 
         context.RegisterSourceOutput(
-            source: valuesProvider,
-            action: (sourceProductionContext, attributeContext) =>
+            source: valuesProvider.Collect(),
+            action: (sourceProductionContext, attributeContexts) =>
             {
-                foreach (var diagnostic in attributeContext.Diagnostics)
+                foreach (var diagnostic in attributeContexts.SelectMany(static context => context.Diagnostics))
                 {
                     sourceProductionContext.ReportDiagnostic(diagnostic);
                 }
 
-                switch (attributeContext)
+                foreach (var attributeContext in GetUniqueAttributeContexts(attributeContexts))
                 {
-                    case LensOfAttributeContext
+                    switch (attributeContext)
                     {
-                        ContainingTypeSymbol: { } containingTypeSymbol,
-                        TypeSymbol: { } typeSymbol
-                    }:
-                    {
-                        AddSource(
-                            sourceProductionContext: sourceProductionContext,
-                            attributeContext: (containingTypeSymbol, typeSymbol),
-                            generateMembers: GenerateLensOfMembers
-                        );
-                        break;
-                    }
-                    case OptionalOfAttributeContext
-                    {
-                        ContainingTypeSymbol: { } containingTypeSymbol,
-                        TypeSymbol: { } typeSymbol
-                    }:
-                    {
-                        AddSource(
-                            sourceProductionContext: sourceProductionContext,
-                            attributeContext: (containingTypeSymbol, typeSymbol),
-                            generateMembers: GenerateOptionalOfMembers
-                        );
-                        break;
+                        case LensOfAttributeContext
+                        {
+                            ContainingTypeSymbol: { } containingTypeSymbol,
+                            TypeSymbol: { } typeSymbol
+                        }:
+                        {
+                            AddSource(
+                                sourceProductionContext: sourceProductionContext,
+                                attributeContext: (containingTypeSymbol, typeSymbol),
+                                generateMembers: GenerateLensOfMembers
+                            );
+                            break;
+                        }
+                        case OptionalOfAttributeContext
+                        {
+                            ContainingTypeSymbol: { } containingTypeSymbol,
+                            TypeSymbol: { } typeSymbol
+                        }:
+                        {
+                            AddSource(
+                                sourceProductionContext: sourceProductionContext,
+                                attributeContext: (containingTypeSymbol, typeSymbol),
+                                generateMembers: GenerateOptionalOfMembers
+                            );
+                            break;
+                        }
                     }
                 }
             });
+
+        static IEnumerable<AttributeContext> GetUniqueAttributeContexts(
+            IEnumerable<AttributeContext> attributeContexts
+        )
+        {
+            var visitedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+            foreach (var attributeContext in attributeContexts)
+            {
+                var containingTypeSymbol = attributeContext switch
+                {
+                    LensOfAttributeContext context => context.ContainingTypeSymbol,
+                    OptionalOfAttributeContext context => context.ContainingTypeSymbol,
+                    _ => null
+                };
+                if (containingTypeSymbol is null || visitedTypes.Add(containingTypeSymbol))
+                {
+                    yield return attributeContext;
+                }
+            }
+        }
     }
     #endregion
 }

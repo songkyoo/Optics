@@ -200,10 +200,7 @@ internal static class Helpers
         #endregion
     }
 
-    public static AttributeContext GetAttributeContext(
-        GeneratorSyntaxContext context,
-        HashSet<INamedTypeSymbol> visitedTypes
-    )
+    public static AttributeContext GetAttributeContext(GeneratorSyntaxContext context)
     {
         if (context.Node is not TypeDeclarationSyntax declarationSyntax)
         {
@@ -222,11 +219,6 @@ internal static class Helpers
                 or OptionalOfAttributeName
             );
         if (attribute is null)
-        {
-            return AttributeContext.Empty;
-        }
-
-        if (!visitedTypes.Add(containingTypeSymbol))
         {
             return AttributeContext.Empty;
         }

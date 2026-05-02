@@ -68,34 +68,34 @@ internal static class Helpers
     #endregion
 
     #region Diagnostics
-    private static readonly DiagnosticDescriptor LensTargetTypeCannotBeNullableRule = new(
+    private static readonly DiagnosticDescriptor OpticsTargetTypeCannotBeNullableRule = new(
         id: "MOPT0001",
-        title: "Lens target type cannot be nullable",
-        messageFormat: "Type '{0}' is nullable. Nullable types are not supported as lens targets.",
+        title: "Optics target type cannot be nullable",
+        messageFormat: "Type '{0}' is nullable. Nullable types are not supported as optics targets.",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
-    private static readonly DiagnosticDescriptor LensTargetTypeMustSupportWithExpressionRule = new(
+    private static readonly DiagnosticDescriptor OpticsTargetTypeMustSupportWithExpressionRule = new(
         id: "MOPT0002",
-        title: "Lens target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used as a lens target",
+        title: "Optics target type must support 'with' expression",
+        messageFormat: "Type '{0}' must be a record or struct to be used as an optics target",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
-    private static readonly DiagnosticDescriptor LensOfAttributeMustBeOnStaticClassRule = new(
+    private static readonly DiagnosticDescriptor OpticsAttributeMustBeOnStaticClassRule = new(
         id: "MOPT0003",
-        title: "LensOf attribute must be applied to a static class",
-        messageFormat: "Class '{0}' must be static to use LensOf attribute",
+        title: "Optics attribute must be applied to a static class",
+        messageFormat: "Class '{0}' must be static to use optics attribute",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
     );
-    private static readonly DiagnosticDescriptor LensOfAttributeTargetMustSupportWithExpressionRule = new(
+    private static readonly DiagnosticDescriptor OpticsAttributeTargetMustSupportWithExpressionRule = new(
         id: "MOPT0004",
-        title: "LensOf attribute target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used with LensOf attribute",
+        title: "Optics attribute target type must support 'with' expression",
+        messageFormat: "Type '{0}' must be a record or struct to be used with optics attribute",
         category: "Usage",
         DiagnosticSeverity.Error,
         isEnabledByDefault: true
@@ -163,7 +163,7 @@ internal static class Helpers
             return TypeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
-                    descriptor: LensTargetTypeCannotBeNullableRule,
+                    descriptor: OpticsTargetTypeCannotBeNullableRule,
                     location: typeArgument.GetLocation(),
                     messageArgs: [typeArgument]
                 )),
@@ -176,7 +176,7 @@ internal static class Helpers
             return TypeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
-                    descriptor: LensTargetTypeMustSupportWithExpressionRule,
+                    descriptor: OpticsTargetTypeMustSupportWithExpressionRule,
                     location: typeArgument.GetLocation(),
                     messageArgs: [typeArgument]
                 )),
@@ -240,7 +240,7 @@ internal static class Helpers
             return AttributeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
-                    descriptor: LensOfAttributeMustBeOnStaticClassRule,
+                    descriptor: OpticsAttributeMustBeOnStaticClassRule,
                     location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                     messageArgs: [containingTypeSymbol]
                 )),
@@ -268,7 +268,7 @@ internal static class Helpers
             return AttributeContext.Empty with
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
-                    descriptor: LensOfAttributeTargetMustSupportWithExpressionRule,
+                    descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
                     location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
                     messageArgs: [typeSymbol]
                 )),

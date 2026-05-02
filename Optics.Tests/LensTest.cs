@@ -173,8 +173,8 @@ public partial class LensTests
         Assert.Multiple(() =>
         {
             var result = person
-                .Let(Person.Lens.Name.Set, "Bob")
-                .Let(Person.Lens.Age.Set, 35);
+                .Let("Bob", Person.Lens.Name.Set)
+                .Let(35, Person.Lens.Age.Set);
 
             Assert.That(result.Name, Is.EqualTo("Bob"));
             Assert.That(result.Age, Is.EqualTo(35));

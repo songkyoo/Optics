@@ -19,6 +19,7 @@
   </ItemGroup>
  
   <ItemGroup>
+    <ProjectReference Include="..\Optics.Attribute\Optics.Attribute.csproj" />
     <ProjectReference Include="..\Optics.Core\Optics.Core.csproj" />
     <ProjectReference Include="..\Optics.Generator\Optics.Generator.csproj" />
     <ProjectReference Include="..\Optics.Generator\Optics.Generator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />

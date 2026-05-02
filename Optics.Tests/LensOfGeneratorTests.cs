@@ -13,8 +13,8 @@ public class LensOfGeneratorTests
     {
         var (_, generatedCodes) = CompileAndGetResults<LensOfGenerator>(
             sourceCode,
-            skipGeneratedCodeCount: 2, // 0, 1번은 LensOfAttribute.g.cs, OptionalOfAttribute.g.cs
-            additionalAssemblies: [typeof(LensOf<>).Assembly]
+            skipGeneratedCodeCount: 0,
+            additionalAssemblies: [typeof(LensOf<>).Assembly, typeof(LensOfAttribute).Assembly]
         );
 
         Assert.That(generatedCodes, Has.Length.EqualTo(expected.Length));
@@ -30,8 +30,8 @@ public class LensOfGeneratorTests
     {
         var (diagnostics, _) = CompileAndGetResults<LensOfGenerator>(
             sourceCode,
-            skipGeneratedCodeCount: 2,
-            additionalAssemblies: [typeof(LensOf<>).Assembly]
+            skipGeneratedCodeCount: 0,
+            additionalAssemblies: [typeof(LensOf<>).Assembly, typeof(LensOfAttribute).Assembly]
         );
 
         var actualDiagnosticIds = diagnostics

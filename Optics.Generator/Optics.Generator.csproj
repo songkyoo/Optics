@@ -10,6 +10,7 @@
     <IncludeSymbols>false</IncludeSymbols>
     <IsRoslynComponent>true</IsRoslynComponent>
     <LangVersion>latest</LangVersion>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
     <RootNamespace>Macaron.Optics</RootNamespace>
@@ -28,6 +29,11 @@
 
   <ItemGroup>
     <None Include="bin\$(Configuration)\netstandard2.0\Macaron.Optics.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs/" />
+    <None Include="..\Optics.Attribute\bin\$(Configuration)\netstandard2.0\Macaron.Optics.Attribute.dll" Pack="true" PackagePath="lib/netstandard2.0/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Optics.Attribute\Optics.Attribute.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

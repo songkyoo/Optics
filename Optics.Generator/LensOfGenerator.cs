@@ -59,8 +59,10 @@ public class LensOfGenerator : IIncrementalGenerator
                         }
                     }
                 }
-            });
+            }
+        );
 
+        #region Local Functions
         static IEnumerable<AttributeContext> GetUniqueAttributeContexts(
             IEnumerable<AttributeContext> attributeContexts
         )
@@ -81,6 +83,7 @@ public class LensOfGenerator : IIncrementalGenerator
                 }
             }
         }
+        #endregion
     }
     #endregion
 }

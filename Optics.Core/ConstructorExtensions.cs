@@ -32,6 +32,34 @@ public static class ConstructorExtensions
         });
     }
 
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Constructor<T, TValue1> constructor,
+        Prism<TValue1, TValue2> prism
+    )
+    {
+        return Constructor<T, TValue2>.Of(constructor: value =>
+        {
+            var newValue1 = prism.Construct(value);
+            var newValue0 = constructor.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Constructor<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Constructor<T, TValue1> constructor,
+        Iso<TValue1, TValue2> iso
+    )
+    {
+        return Constructor<T, TValue2>.Of(constructor: value =>
+        {
+            var newValue1 = iso.Construct(value);
+            var newValue0 = constructor.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
     public static Constructor<TResult, TValue> Transform<T, TValue, TResult>(
         this Constructor<T, TValue> constructor,
         Func<TValue, T, TResult> mapConstruct

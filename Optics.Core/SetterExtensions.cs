@@ -4,6 +4,48 @@ namespace Macaron.Optics;
 
 public static class SetterExtensions
 {
+    public static Setter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Setter<T, TValue1> setter,
+        Constructor<TValue1, TValue2> constructor
+    )
+    {
+        return Setter<T, TValue2>.Of(setter: (source, value) =>
+        {
+            var newValue1 = constructor.Construct(value);
+            var newValue0 = setter.Set(source, newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Setter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Setter<T, TValue1> setter,
+        Prism<TValue1, TValue2> prism
+    )
+    {
+        return Setter<T, TValue2>.Of(setter: (source, value) =>
+        {
+            var newValue1 = prism.Construct(value);
+            var newValue0 = setter.Set(source, newValue1);
+
+            return newValue0;
+        });
+    }
+
+    public static Setter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Setter<T, TValue1> setter,
+        Iso<TValue1, TValue2> iso
+    )
+    {
+        return Setter<T, TValue2>.Of(setter: (source, value) =>
+        {
+            var newValue1 = iso.Construct(value);
+            var newValue0 = setter.Set(source, newValue1);
+
+            return newValue0;
+        });
+    }
+
     public static Setter<T, TValue> Transform<T, TValue>(
         this Setter<T, TValue> setter,
         Func<T, TValue, TValue> mapSet

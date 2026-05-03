@@ -83,6 +83,116 @@ public static class OptionalGetterExtensions
 
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<Maybe<TValue1>, TValue2> optional
+    )
+    {
+        return OptionalGetter<T, TValue2>.Of(optionalGetter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = optional.Get(value1);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<TValue1, TValue2> optional,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just && optional.Get(just.Value) is { IsJust: true } just2
+                ? just2.Value
+                : getDefaultValue(source);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<TValue1, TValue2> optional,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just && optional.Get(just.Value) is { IsJust: true } just2
+                ? just2.Value
+                : getDefaultValue();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<TValue1, TValue2> optional,
+        TValue2 defaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just
+                ? optional.Get(just.Value).GetOrElse(defaultValue)
+                : defaultValue;
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = optional.Get(value1) is { IsJust: true } just ? just.Value : getDefaultValue(source);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = optional.Get(value1) is { IsJust: true } just ? just.Value : getDefaultValue();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        TValue2 defaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = optional.Get(value1).GetOrElse(defaultValue);
+
+            return value2;
+        });
+    }
+
+    public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
         Lens<TValue1, TValue2> lens
     )
     {
@@ -91,6 +201,51 @@ public static class OptionalGetterExtensions
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
             var value2 = value1 is { IsJust: true } ? Just(lens.Get(value1.Value)) : Nothing();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Lens<TValue1, TValue2> lens,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? lens.Get(just.Value) : getDefaultValue(source);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Lens<TValue1, TValue2> lens,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? lens.Get(just.Value) : getDefaultValue();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Lens<TValue1, TValue2> lens,
+        TValue2 defaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? lens.Get(just.Value) : defaultValue;
 
             return value2;
         });
@@ -111,6 +266,57 @@ public static class OptionalGetterExtensions
         });
     }
 
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Prism<TValue1, TValue2> prism,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just && prism.Get(just.Value) is { IsJust: true } just2
+                ? just2.Value
+                : getDefaultValue(source);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Prism<TValue1, TValue2> prism,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just && prism.Get(just.Value) is { IsJust: true } just2
+                ? just2.Value
+                : getDefaultValue();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Prism<TValue1, TValue2> prism,
+        TValue2 defaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just
+                ? prism.Get(just.Value).GetOrElse(defaultValue)
+                : defaultValue;
+
+            return value2;
+        });
+    }
+
     public static OptionalGetter<T, TValue2> Compose<T, TValue1, TValue2>(
         this OptionalGetter<T, TValue1> optionalGetter,
         Iso<TValue1, TValue2> iso
@@ -121,6 +327,51 @@ public static class OptionalGetterExtensions
             var value0 = source;
             var value1 = optionalGetter.Get(value0);
             var value2 = value1 is { IsJust: true } ? Just(iso.Get(value1.Value)) : Nothing();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Iso<TValue1, TValue2> iso,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? iso.Get(just.Value) : getDefaultValue(source);
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Iso<TValue1, TValue2> iso,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? iso.Get(just.Value) : getDefaultValue();
+
+            return value2;
+        });
+    }
+
+    public static Getter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this OptionalGetter<T, TValue1> optionalGetter,
+        Iso<TValue1, TValue2> iso,
+        TValue2 defaultValue
+    )
+    {
+        return Getter<T, TValue2>.Of(getter: source =>
+        {
+            var value1 = optionalGetter.Get(source);
+            var value2 = value1 is { IsJust: true } just ? iso.Get(just.Value) : defaultValue;
 
             return value2;
         });

@@ -1,5 +1,7 @@
 using Macaron.Functional;
 
+using static Macaron.Functional.Maybe;
+
 namespace Macaron.Optics;
 
 public static class IsoExtensions
@@ -92,6 +94,21 @@ public static class IsoExtensions
         });
     }
 
+    public static Setter<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Setter<TValue1, TValue2> setter
+    )
+    {
+        return Setter<T, TValue2>.Of(setter: (source, value) =>
+        {
+            var value1 = iso.Get(source);
+            var newValue1 = setter.Set(value1, value);
+            var newValue0 = iso.Construct(newValue1);
+
+            return newValue0;
+        });
+    }
+
     public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
         this Iso<T, TValue1> iso,
         Optional<TValue1, TValue2> optional
@@ -113,6 +130,105 @@ public static class IsoExtensions
 
                 var newValue1 = optional.Set(value1, value);
                 var newValue0 = iso.Construct(newValue1);
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Optional<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Optional<Maybe<TValue1>, TValue2> optional
+    )
+    {
+        return Optional<T, TValue2>.Of(
+            optionalGetter: source =>
+            {
+                var value1 = iso.Get(source);
+                var value2 = optional.Get(Just(value1));
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value1 = iso.Get(source);
+                var newValue1 = optional.Set(Just(value1), value);
+                var newValue0 = newValue1.IsJust ? iso.Construct(newValue1.Value) : source;
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        Func<T, TValue2> getDefaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value1 = iso.Get(source);
+                var value2 = optional.Get(Just(value1)) is { IsJust: true } just ? just.Value : getDefaultValue(source);
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value1 = iso.Get(source);
+                var newValue1 = optional.Set(Just(value1), value);
+                var newValue0 = newValue1.IsJust ? iso.Construct(newValue1.Value) : source;
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        Func<TValue2> getDefaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value1 = iso.Get(source);
+                var value2 = optional.Get(Just(value1)) is { IsJust: true } just ? just.Value : getDefaultValue();
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value1 = iso.Get(source);
+                var newValue1 = optional.Set(Just(value1), value);
+                var newValue0 = newValue1.IsJust ? iso.Construct(newValue1.Value) : source;
+
+                return newValue0;
+            }
+        );
+    }
+
+    public static Lens<T, TValue2> Compose<T, TValue1, TValue2>(
+        this Iso<T, TValue1> iso,
+        Optional<Maybe<TValue1>, TValue2> optional,
+        TValue2 defaultValue
+    )
+    {
+        return Lens<T, TValue2>.Of(
+            getter: source =>
+            {
+                var value1 = iso.Get(source);
+                var value2 = optional.Get(Just(value1)).GetOrElse(defaultValue);
+
+                return value2;
+            },
+            setter: (source, value) =>
+            {
+                var value1 = iso.Get(source);
+                var newValue1 = optional.Set(Just(value1), value);
+                var newValue0 = newValue1.IsJust ? iso.Construct(newValue1.Value) : source;
 
                 return newValue0;
             }

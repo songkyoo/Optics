@@ -688,7 +688,7 @@ internal static class Helpers
             return false;
         }
 
-        return propertySymbol.SetMethod is not null or { IsReadOnly: true };
+        return propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public };
     }
 
     private static bool IsValidField(IFieldSymbol fieldSymbol)

@@ -488,6 +488,8 @@ public class LensOfGeneratorTests
 
             public partial struct TestClass
             {
+                public string PrivateSetProperty { get; private set; }
+                public string ProtectedSetProperty { get; protected set; }
                 public string ValidProperty { get; set; }
                 public string ReadOnlyProperty { get; }
                 public string InitOnlyProperty { get; init; }

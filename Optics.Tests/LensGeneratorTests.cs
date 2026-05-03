@@ -456,6 +456,8 @@ public class LensGeneratorTests
 
             public partial struct Point
             {
+                public int PrivateSet { get; private set; }
+                public int ProtectedSet { get; protected set; }
                 public int X { get; set; }
                 public int? Y { get; set; }
                 public string? Label { get; set; }

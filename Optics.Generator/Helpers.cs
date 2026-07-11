@@ -16,8 +16,8 @@ internal static class Helpers
     #region Constants
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
-    private const string LensOfAttributeName = "Macaron.Optics.LensOfAttribute";
-    private const string OptionalOfAttributeName = "Macaron.Optics.OptionalOfAttribute";
+    public const string LensOfAttributeName = "Macaron.Optics.LensOfAttribute";
+    public const string OptionalOfAttributeName = "Macaron.Optics.OptionalOfAttribute";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
     #endregion
 
@@ -262,29 +262,20 @@ internal static class Helpers
         #endregion
     }
 
-    public static AttributeContext GetAttributeContext(GeneratorSyntaxContext context)
+    public static AttributeContext GetAttributeContext(
+        GeneratorAttributeSyntaxContext context,
+        CancellationToken cancellationToken
+    )
     {
-        if (context.Node is not TypeDeclarationSyntax declarationSyntax)
+        if (context.TargetSymbol is not INamedTypeSymbol containingTypeSymbol)
         {
             return AttributeContext.Empty;
         }
 
-        if (context.SemanticModel.GetDeclaredSymbol(declarationSyntax) is not { } containingTypeSymbol)
-        {
-            return AttributeContext.Empty;
-        }
-
-        var attribute = containingTypeSymbol
-            .GetAttributes()
-            .FirstOrDefault(static attributeData => attributeData.AttributeClass?.ToDisplayString()
-                is LensOfAttributeName
-                or OptionalOfAttributeName
-            );
-
-        if (attribute is null)
-        {
-            return AttributeContext.Empty;
-        }
+        var attribute = context.Attributes[0];
+        var location = attribute.ApplicationSyntaxReference?
+            .GetSyntax(cancellationToken)
+            .GetLocation();
 
         if (!containingTypeSymbol.IsStatic)
         {
@@ -292,10 +283,15 @@ internal static class Helpers
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
                     descriptor: OpticsAttributeMustBeOnStaticClassRule,
-                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    location,
                     messageArgs: [containingTypeSymbol]
                 )),
             };
+        }
+
+        if (attribute.ConstructorArguments is [{ Value: IErrorTypeSymbol }])
+        {
+            return AttributeContext.Empty;
         }
 
         var typeSymbol = attribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
@@ -308,7 +304,7 @@ internal static class Helpers
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
-                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    location,
                     messageArgs: [containingTypeSymbol]
                 )),
             };
@@ -320,7 +316,7 @@ internal static class Helpers
             {
                 Diagnostics = ImmutableArray.Create(Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
-                    location: attribute.ApplicationSyntaxReference?.GetSyntax().GetLocation(),
+                    location,
                     messageArgs: [typeSymbol]
                 )),
             };

@@ -1,5 +1,7 @@
 <Project>
-    <ItemGroup>
-        <ProjectReference Remove=".\Optics.Package\Optics.Package.csproj" />
-    </ItemGroup>
+    
+  <ItemGroup>
+    <ProjectReference Remove=".\Optics.Package\Optics.Package.csproj" />
+  </ItemGroup>
+    
 </Project>

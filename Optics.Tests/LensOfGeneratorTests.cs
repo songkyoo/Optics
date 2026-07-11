@@ -567,6 +567,33 @@ public class LensOfGeneratorTests
         );
     }
 
+    [TestCase("LensOf")]
+    [TestCase("OptionalOf")]
+    public void When_AttributeTypeOfExpressionCannotBeResolved_Should_GenerateNothing(string attributeName)
+    {
+        var (diagnostics, generatedCodes) = CompileAndGetResults<LensOfGenerator>(
+            sourceCode:
+            $$"""
+            namespace Macaron.Optics.Tests;
+
+            [{{attributeName}}(typeof(MissingPerson))]
+            public static partial class PersonOptics;
+            """,
+            skipGeneratedCodeCount: 0,
+            additionalAssemblies: [typeof(LensOf<>).Assembly, typeof(LensOfAttribute).Assembly]
+        );
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(generatedCodes, Is.Empty);
+            Assert.That(diagnostics, Has.Some.Matches<Diagnostic>(diagnostic => diagnostic.Id == "CS0246"));
+            Assert.That(
+                diagnostics.Where(static diagnostic => diagnostic.Id.StartsWith("MOPT")),
+                Is.Empty
+            );
+        });
+    }
+
     [Test]
     public void When_AttributeTargetIsInterface_Should_ReportError()
     {

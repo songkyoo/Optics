@@ -13,7 +13,7 @@
     <NoWarn>$(NoWarn);NU5128</NoWarn>
     <Nullable>enable</Nullable>
     <OutputType>Library</OutputType>
-    <RootNamespace>Macaron.Optics</RootNamespace>
+    <RootNamespace>Macaron.Optics.Generator</RootNamespace>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>

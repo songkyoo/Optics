@@ -5,7 +5,7 @@ using static Macaron.Optics.Generator.Helpers;
 
 namespace Macaron.Optics.Generator;
 
-[Generator]
+[Generator(LanguageNames.CSharp)]
 public class LensGenerator : IIncrementalGenerator
 {
     #region IIncrementalGenerator Interface

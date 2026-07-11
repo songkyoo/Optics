@@ -5,81 +5,90 @@ using static Macaron.Optics.Generator.Helpers;
 
 namespace Macaron.Optics.Generator;
 
-[Generator]
+[Generator(LanguageNames.CSharp)]
 public class LensOfGenerator : IIncrementalGenerator
 {
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var valuesProvider = context
+        var lensOfAttributeContexts = context
             .SyntaxProvider
-            .CreateSyntaxProvider(
+            .ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: LensOfAttributeName,
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
-                transform: static (generatorSyntaxContext, _) => GetAttributeContext(generatorSyntaxContext)
-            );
+                transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
+                    generatorAttributeSyntaxContext,
+                    cancellationToken
+                )
+            )
+            .Where(static attributeContext => !ReferenceEquals(attributeContext, AttributeContext.Empty));
+        var optionalOfAttributeContexts = context
+            .SyntaxProvider
+            .ForAttributeWithMetadataName(
+                fullyQualifiedMetadataName: OptionalOfAttributeName,
+                predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
+                transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
+                    generatorAttributeSyntaxContext,
+                    cancellationToken
+                )
+            )
+            .Where(static attributeContext => !ReferenceEquals(attributeContext, AttributeContext.Empty));
 
         context.RegisterSourceOutput(
-            source: valuesProvider.Collect(),
-            action: (sourceProductionContext, attributeContexts) =>
-            {
-                foreach (var diagnostic in attributeContexts.SelectMany(static context => context.Diagnostics))
-                {
-                    sourceProductionContext.ReportDiagnostic(diagnostic);
-                }
-
-                foreach (var attributeContext in GetUniqueAttributeContexts(attributeContexts))
-                {
-                    switch (attributeContext)
-                    {
-                        case LensOfAttributeContext
-                        {
-                            ContainingTypeSymbol: { } containingTypeSymbol,
-                            TypeSymbol: { } typeSymbol
-                        }:
-                        {
-                            AddSource(
-                                sourceProductionContext: sourceProductionContext,
-                                attributeContext: (containingTypeSymbol, typeSymbol),
-                                generateMembers: GenerateLensOfMembers
-                            );
-                            break;
-                        }
-                        case OptionalOfAttributeContext
-                        {
-                            ContainingTypeSymbol: { } containingTypeSymbol,
-                            TypeSymbol: { } typeSymbol
-                        }:
-                        {
-                            AddSource(
-                                sourceProductionContext: sourceProductionContext,
-                                attributeContext: (containingTypeSymbol, typeSymbol),
-                                generateMembers: GenerateOptionalOfMembers
-                            );
-                            break;
-                        }
-                    }
-                }
-            }
+            source: lensOfAttributeContexts,
+            action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
+                sourceProductionContext,
+                attributeContext
+            )
+        );
+        context.RegisterSourceOutput(
+            source: optionalOfAttributeContexts,
+            action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
+                sourceProductionContext,
+                attributeContext
+            )
         );
 
         #region Local Functions
-        static IEnumerable<AttributeContext> GetUniqueAttributeContexts(
-            IEnumerable<AttributeContext> attributeContexts
+        static void GenerateAttributeSource(
+            SourceProductionContext sourceProductionContext,
+            AttributeContext attributeContext
         )
         {
-            var visitedTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-            foreach (var attributeContext in attributeContexts)
+            foreach (var diagnostic in attributeContext.Diagnostics)
             {
-                var containingTypeSymbol = attributeContext switch
+                sourceProductionContext.ReportDiagnostic(diagnostic);
+            }
+
+            switch (attributeContext)
+            {
+                case LensOfAttributeContext
                 {
-                    LensOfAttributeContext context => context.ContainingTypeSymbol,
-                    OptionalOfAttributeContext context => context.ContainingTypeSymbol,
-                    _ => null
-                };
-                if (containingTypeSymbol is null || visitedTypes.Add(containingTypeSymbol))
+                    ContainingTypeSymbol: { } containingTypeSymbol,
+                    TypeSymbol: { } typeSymbol
+                }:
                 {
-                    yield return attributeContext;
+                    AddSource(
+                        sourceProductionContext: sourceProductionContext,
+                        attributeContext: (containingTypeSymbol, typeSymbol),
+                        generateMembers: GenerateLensOfMembers
+                    );
+
+                    break;
+                }
+                case OptionalOfAttributeContext
+                {
+                    ContainingTypeSymbol: { } containingTypeSymbol,
+                    TypeSymbol: { } typeSymbol
+                }:
+                {
+                    AddSource(
+                        sourceProductionContext: sourceProductionContext,
+                        attributeContext: (containingTypeSymbol, typeSymbol),
+                        generateMembers: GenerateOptionalOfMembers
+                    );
+
+                    break;
                 }
             }
         }

@@ -305,94 +305,6 @@ internal static class Helpers
         return new AnalysisResult<AttributeContext>.Success(attributeContext);
     }
 
-    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
-        TypeGenerationModel typeModel
-    )
-    {
-        return GenerateMembers(
-            typeModel,
-            getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
-            {
-                var memberDeclaration = isNullable
-                    ? $"{LensOfTypeString}<{typeName}, {MaybeTypeString}<{memberTypeName}>> {memberName}"
-                    : $"{LensOfTypeString}<{typeName}, {memberTypeName}> {memberName}";
-
-                var lines = isNullable
-                    ? new List<string>
-                    {
-                        $"{LensOfTypeString}<{typeName}, {MaybeTypeString}<{memberTypeName}>>.Of(",
-                        $"    getter: static source => source is {{ {memberName}: {{ }} value }}",
-                        $"        ? {MaybeTypeString}.Just(value)",
-                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
-                        $"    setter: static (source, value) => source with",
-                        $"    {{",
-                        $"        {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
-                        $"    }}",
-                        $");",
-                    }
-                    :  new List<string>
-                    {
-                        $"{LensOfTypeString}<{typeName}, {memberTypeName}>.Of(",
-                        $"    getter: static source => source.{memberName},",
-                        $"    setter: static (source, value) => source with",
-                        $"    {{",
-                        $"        {memberName} = value,",
-                        $"    }}",
-                        $");",
-                    };
-
-                return (memberDeclaration, lines.ToImmutableArray());
-            }
-        );
-    }
-
-    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(
-        TypeGenerationModel typeModel
-    )
-    {
-        return GenerateMembers(
-            typeModel,
-            getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
-            {
-                var memberDeclaration = isNullable
-                    ? $"{LensOfTypeString}<{MaybeTypeString}<{typeName}>, {MaybeTypeString}<{memberTypeName}>> {memberName}"
-                    : $"{OptionalOfTypeString}<{MaybeTypeString}<{typeName}>, {memberTypeName}> {memberName}";
-
-                var lines = isNullable
-                    ? ImmutableArray.Create(
-                        $"{LensOfTypeString}<{MaybeTypeString}<{typeName}>, {MaybeTypeString}<{memberTypeName}>>.Of(",
-                        $"    getter: static source => source is {{ IsJust: true, Value: {{ }} value }}",
-                        $"        ? value.{memberName} is {{ }} value2",
-                        $"            ? {MaybeTypeString}.Just(value2)",
-                        $"            : {MaybeTypeString}.Nothing<{memberTypeName}>()",
-                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
-                        $"    setter: static (source, value) => source.IsJust",
-                        $"        ? {MaybeTypeString}.Just(source.Value with",
-                        $"        {{",
-                        $"            {memberName} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,",
-                        $"        }})",
-                        $"        : {MaybeTypeString}.Nothing<{typeName}>()",
-                        $");"
-                    )
-                    : ImmutableArray.Create(
-                        $"{OptionalOfTypeString}<{MaybeTypeString}<{typeName}>, {memberTypeName}>.Of(",
-                        $"    optionalGetter: static source => source.IsJust",
-                        $"        ? {MaybeTypeString}.Just(source.Value.{memberName})",
-                        $"        : {MaybeTypeString}.Nothing<{memberTypeName}>(),",
-                        $"    setter: static (source, value) => source.IsJust",
-                        $"        ? {MaybeTypeString}.Just(source.Value with",
-                        $"        {{",
-                        $"            {memberName} = value,",
-                        $"        }})",
-                        $"        : {MaybeTypeString}.Nothing<{typeName}>()",
-                        $");"
-                    );
-
-                return (memberDeclaration, lines);
-            }
-        );
-    }
-
     public static OfGenerationModel CreateOfGenerationModel(ImmutableArray<TypeContext> typeContexts)
     {
         var lensTypeSymbols = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
@@ -542,7 +454,7 @@ internal static class Helpers
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
         ImmutableArray<TypeGenerationModel> typeModels,
-        Func<TypeGenerationModel, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
+        OpticsKind kind
     )
     {
         if (typeModels.IsDefaultOrEmpty)
@@ -563,28 +475,25 @@ internal static class Helpers
         for (int i = 0; i < typeModels.Length; ++i)
         {
             var typeModel = typeModels[i];
-            var members = generateMembers(typeModel);
             var typeName = typeModel.TypeName;
 
-            for (int j = 0; j < members.Length; ++j)
+            for (int j = 0; j < typeModel.Members.Length; ++j)
             {
-                var (memberDeclaration, lines) = members[j];
+                var member = typeModel.Members[j];
 
-                stringBuilder.AppendLine($"        public static {memberDeclaration}(");
+                stringBuilder.Append("        public static ");
+                AppendOpticType(stringBuilder, typeModel, member, kind);
+                stringBuilder.Append(' ').Append(member.Name).AppendLine("(");
                 stringBuilder.AppendLine($"            this {lensOfTypeName}<{typeName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
                 stringBuilder.AppendLine($"        )");
                 stringBuilder.AppendLine($"        {{");
 
-                stringBuilder.AppendLine($"            return {lines[0]}");
-
-                foreach (var line in lines.Skip(1))
-                {
-                    stringBuilder.AppendLine($"            {line}");
-                }
+                stringBuilder.Append("            return ");
+                AppendFactoryCall(stringBuilder, typeModel, member, kind, "            ");
 
                 stringBuilder.AppendLine($"        }}");
 
-                if (j < members.Length - 1)
+                if (j < typeModel.Members.Length - 1)
                 {
                     stringBuilder.AppendLine();
                 }
@@ -613,14 +522,9 @@ internal static class Helpers
         AttributeGenerationModel generationModel
     )
     {
-        var members = generationModel.Kind switch
-        {
-            OpticsKind.Lens => GenerateLensOfMembers(generationModel.TargetType),
-            OpticsKind.Optional => GenerateOptionalOfMembers(generationModel.TargetType),
-            _ => throw new InvalidOperationException($"Invalid optics kind: {generationModel.Kind}"),
-        };
+        var typeModel = generationModel.TargetType;
 
-        if (members.IsDefaultOrEmpty)
+        if (typeModel.Members.IsDefaultOrEmpty)
         {
             return;
         }
@@ -648,17 +552,22 @@ internal static class Helpers
         }
 
         // write members
-        for (var i = 0; i < members.Length; ++i)
+        for (var i = 0; i < typeModel.Members.Length; ++i)
         {
-            var (memberDeclaration, lines) = members[i];
+            var member = typeModel.Members[i];
 
-            stringBuilder.AppendLine($"{depthSpacerText}public static readonly {memberDeclaration} = {lines[0]}");
-            foreach (var line in lines.Skip(1))
-            {
-                stringBuilder.AppendLine($"{depthSpacerText}{line}");
-            }
+            stringBuilder.Append(depthSpacerText).Append("public static readonly ");
+            AppendOpticType(stringBuilder, typeModel, member, generationModel.Kind);
+            stringBuilder.Append(' ').Append(member.Name).Append(" = ");
+            AppendFactoryCall(
+                stringBuilder,
+                typeModel,
+                member,
+                generationModel.Kind,
+                depthSpacerText
+            );
 
-            if (i < members.Length - 1)
+            if (i < typeModel.Members.Length - 1)
             {
                 stringBuilder.AppendLine();
             }
@@ -681,6 +590,155 @@ internal static class Helpers
             hintName: generationModel.HintName,
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
         );
+    }
+
+    private static void AppendOpticType(
+        StringBuilder stringBuilder,
+        TypeGenerationModel typeModel,
+        MemberGenerationModel member,
+        OpticsKind kind
+    )
+    {
+        switch (kind)
+        {
+            case OpticsKind.Lens:
+            {
+                stringBuilder.Append(LensOfTypeString).Append('<').Append(typeModel.TypeName).Append(", ");
+
+                if (member.IsNullable)
+                {
+                    stringBuilder.Append(MaybeTypeString).Append('<').Append(member.TypeName).Append('>');
+                }
+                else
+                {
+                    stringBuilder.Append(member.TypeName);
+                }
+
+                stringBuilder.Append('>');
+
+                break;
+            }
+            case OpticsKind.Optional:
+            {
+                if (member.IsNullable)
+                {
+                    stringBuilder
+                        .Append(LensOfTypeString)
+                        .Append('<')
+                        .Append(MaybeTypeString)
+                        .Append('<')
+                        .Append(typeModel.TypeName)
+                        .Append(">, ")
+                        .Append(MaybeTypeString)
+                        .Append('<')
+                        .Append(member.TypeName)
+                        .Append(">>");
+                }
+                else
+                {
+                    stringBuilder
+                        .Append(OptionalOfTypeString)
+                        .Append('<')
+                        .Append(MaybeTypeString)
+                        .Append('<')
+                        .Append(typeModel.TypeName)
+                        .Append(">, ")
+                        .Append(member.TypeName)
+                        .Append('>');
+                }
+
+                break;
+            }
+            default:
+                throw new InvalidOperationException($"Invalid optics kind: {kind}");
+        }
+    }
+
+    private static void AppendFactoryCall(
+        StringBuilder stringBuilder,
+        TypeGenerationModel typeModel,
+        MemberGenerationModel member,
+        OpticsKind kind,
+        string indentation
+    )
+    {
+        AppendOpticType(stringBuilder, typeModel, member, kind);
+        stringBuilder.AppendLine(".Of(");
+
+        switch (kind, member.IsNullable)
+        {
+            case (OpticsKind.Lens, false):
+            {
+                stringBuilder.Append(indentation).Append("    getter: static source => source.").Append(member.Name).AppendLine(",");
+                stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source with");
+                stringBuilder.Append(indentation).AppendLine("    {");
+                stringBuilder.Append(indentation).Append("        ").Append(member.Name).AppendLine(" = value,");
+                stringBuilder.Append(indentation).AppendLine("    }");
+
+                break;
+            }
+            case (OpticsKind.Lens, true):
+            {
+                stringBuilder.Append(indentation).Append("    getter: static source => source is { ").Append(member.Name).AppendLine(": { } value }");
+                stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).AppendLine(".Just(value)");
+                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
+                stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source with");
+                stringBuilder.Append(indentation).AppendLine("    {");
+                stringBuilder.Append(indentation).Append("        ").Append(member.Name).AppendLine(" = value is { IsJust: true, Value: var value2 } ? value2 : null,");
+                stringBuilder.Append(indentation).AppendLine("    }");
+
+                break;
+            }
+            case (OpticsKind.Optional, false):
+            {
+                stringBuilder.Append(indentation).AppendLine("    optionalGetter: static source => source.IsJust");
+                stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).Append(".Just(source.Value.").Append(member.Name).AppendLine(")");
+                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
+                AppendOptionalSetter(stringBuilder, typeModel, member, indentation, isNullable: false);
+
+                break;
+            }
+            case (OpticsKind.Optional, true):
+            {
+                stringBuilder.Append(indentation).AppendLine("    getter: static source => source is { IsJust: true, Value: { } value }");
+                stringBuilder.Append(indentation).Append("        ? value.").Append(member.Name).AppendLine(" is { } value2");
+                stringBuilder.Append(indentation).Append("            ? ").Append(MaybeTypeString).AppendLine(".Just(value2)");
+                stringBuilder.Append(indentation).Append("            : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">()");
+                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
+                AppendOptionalSetter(stringBuilder, typeModel, member, indentation, isNullable: true);
+
+                break;
+            }
+            default:
+                throw new InvalidOperationException($"Invalid optics kind: {kind}");
+        }
+
+        stringBuilder.Append(indentation).AppendLine(");");
+
+        #region Local Functions
+        static void AppendOptionalSetter(
+            StringBuilder stringBuilder,
+            TypeGenerationModel typeModel,
+            MemberGenerationModel member,
+            string indentation,
+            bool isNullable
+        )
+        {
+            stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source.IsJust");
+            stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).AppendLine(".Just(source.Value with");
+            stringBuilder.Append(indentation).AppendLine("        {");
+            stringBuilder.Append(indentation).Append("            ").Append(member.Name).Append(" = value");
+
+            if (isNullable)
+            {
+                stringBuilder.Append(" is { IsJust: true, Value: var value2 } ? value2 : null");
+            }
+
+            stringBuilder.AppendLine(",");
+            stringBuilder.Append(indentation).AppendLine("        })");
+            stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(typeModel.TypeName).AppendLine(">()");
+        }
+        #endregion
     }
 
     public static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
@@ -736,31 +794,6 @@ internal static class Helpers
                 IFieldSymbol { Type.NullableAnnotation: NullableAnnotation.Annotated };
         }
         #endregion
-    }
-
-    private static ImmutableArray<(string, ImmutableArray<string>)> GenerateMembers(
-        TypeGenerationModel typeModel,
-        Func<string, string, string, bool, (string, ImmutableArray<string>)> getSourceByMember
-    )
-    {
-        if (typeModel.Members.IsEmpty)
-        {
-            return ImmutableArray<(string, ImmutableArray<string>)>.Empty;
-        }
-
-        var builder = ImmutableArray.CreateBuilder<(string, ImmutableArray<string>)>(typeModel.Members.Length);
-
-        foreach (var member in typeModel.Members)
-        {
-            builder.Add(getSourceByMember(
-                typeModel.TypeName,
-                member.TypeName,
-                member.Name,
-                member.IsNullable
-            ));
-        }
-
-        return builder.MoveToImmutable();
     }
 
     private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)

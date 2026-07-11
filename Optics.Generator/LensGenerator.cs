@@ -1,6 +1,7 @@
 using Microsoft.CodeAnalysis;
 
 using static Macaron.Optics.Generator.Helpers;
+using static Macaron.Optics.Generator.OpticsKind;
 
 namespace Macaron.Optics.Generator;
 
@@ -42,13 +43,13 @@ public class LensGenerator : IIncrementalGenerator
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "LensOf",
                     typeModels: generationModel.LensTypes,
-                    generateMembers: GenerateLensOfMembers
+                    kind: Lens
                 );
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "OptionalOf",
                     typeModels: generationModel.OptionalTypes,
-                    generateMembers: GenerateOptionalOfMembers
+                    kind: Optional
                 );
             }
         );

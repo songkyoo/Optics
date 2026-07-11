@@ -21,6 +21,8 @@ internal static class Helpers
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
+
+    private const string Indent = "    ";
     #endregion
 
     #region Methods
@@ -389,14 +391,17 @@ internal static class Helpers
         }
 
         var stringBuilder = CreateStringBuilderWithFileHeader();
+        var typeIndent = Indent;
+        var memberIndent = $"{typeIndent}{Indent}";
+        var bodyIndent = $"{memberIndent}{Indent}";
 
         // begin namespace
         stringBuilder.AppendLine($"namespace Macaron.Optics");
         stringBuilder.AppendLine($"{{");
 
         // begin extension methods
-        stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
-        stringBuilder.AppendLine($"    {{");
+        stringBuilder.AppendLine($"{typeIndent}internal static class {lensOfTypeName}Extensions");
+        stringBuilder.AppendLine($"{typeIndent}{{");
 
         for (int i = 0; i < typeModels.Length; ++i)
         {
@@ -406,18 +411,17 @@ internal static class Helpers
             for (int j = 0; j < typeModel.Members.Length; ++j)
             {
                 var member = typeModel.Members[j];
+                var opticType = GetOpticType(typeModel, member, kind);
 
-                stringBuilder.Append("        public static ");
-                AppendOpticType(stringBuilder, typeModel, member, kind);
-                stringBuilder.Append(' ').Append(member.Name).AppendLine("(");
-                stringBuilder.AppendLine($"            this {lensOfTypeName}<{typeName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
-                stringBuilder.AppendLine($"        )");
-                stringBuilder.AppendLine($"        {{");
+                stringBuilder.AppendLine($"{memberIndent}public static {opticType} {member.Name}(");
+                stringBuilder.AppendLine($"{bodyIndent}this {lensOfTypeName}<{typeName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
+                stringBuilder.AppendLine($"{memberIndent})");
+                stringBuilder.AppendLine($"{memberIndent}{{");
 
-                stringBuilder.Append("            return ");
-                AppendFactoryCall(stringBuilder, typeModel, member, kind, "            ");
+                stringBuilder.Append($"{bodyIndent}return ");
+                AppendFactoryCall(stringBuilder, typeModel, member, kind, bodyIndent);
 
-                stringBuilder.AppendLine($"        }}");
+                stringBuilder.AppendLine($"{memberIndent}}}");
 
                 if (j < typeModel.Members.Length - 1)
                 {
@@ -432,7 +436,7 @@ internal static class Helpers
         }
 
         // end extension methods
-        stringBuilder.AppendLine($"    }}");
+        stringBuilder.AppendLine($"{typeIndent}}}");
 
         // end namespace
         stringBuilder.AppendLine($"}}");
@@ -466,7 +470,7 @@ internal static class Helpers
             stringBuilder.AppendLine($"{{");
         }
 
-        var depthSpacerText = hasNamespace ? "    " : "";
+        var depthSpacerText = hasNamespace ? Indent : "";
 
         // begin containing types
         foreach (var typeDeclaration in generationModel.TypeDeclarations)
@@ -474,17 +478,16 @@ internal static class Helpers
             stringBuilder.AppendLine($"{depthSpacerText}{typeDeclaration}");
             stringBuilder.AppendLine($"{depthSpacerText}{{");
 
-            depthSpacerText += "    ";
+            depthSpacerText += Indent;
         }
 
         // write members
         for (var i = 0; i < typeModel.Members.Length; ++i)
         {
             var member = typeModel.Members[i];
+            var opticType = GetOpticType(typeModel, member, generationModel.Kind);
 
-            stringBuilder.Append(depthSpacerText).Append("public static readonly ");
-            AppendOpticType(stringBuilder, typeModel, member, generationModel.Kind);
-            stringBuilder.Append(' ').Append(member.Name).Append(" = ");
+            stringBuilder.Append($"{depthSpacerText}public static readonly {opticType} {member.Name} = ");
             AppendFactoryCall(
                 stringBuilder,
                 typeModel,
@@ -502,7 +505,7 @@ internal static class Helpers
         // end containing types
         for (var i = 0; i < generationModel.TypeDeclarations.Length; ++i)
         {
-            depthSpacerText = depthSpacerText[..^4];
+            depthSpacerText = depthSpacerText[..^Indent.Length];
             stringBuilder.AppendLine($"{depthSpacerText}}}");
         }
 
@@ -518,66 +521,20 @@ internal static class Helpers
         );
     }
 
-    private static void AppendOpticType(
-        StringBuilder stringBuilder,
+    private static string GetOpticType(
         TypeGenerationModel typeModel,
         MemberGenerationModel member,
         OpticsKind kind
     )
     {
-        switch (kind)
+        return (kind, member.IsNullable) switch
         {
-            case OpticsKind.Lens:
-            {
-                stringBuilder.Append(LensOfTypeString).Append('<').Append(typeModel.TypeName).Append(", ");
-
-                if (member.IsNullable)
-                {
-                    stringBuilder.Append(MaybeTypeString).Append('<').Append(member.TypeName).Append('>');
-                }
-                else
-                {
-                    stringBuilder.Append(member.TypeName);
-                }
-
-                stringBuilder.Append('>');
-
-                break;
-            }
-            case OpticsKind.Optional:
-            {
-                if (member.IsNullable)
-                {
-                    stringBuilder
-                        .Append(LensOfTypeString)
-                        .Append('<')
-                        .Append(MaybeTypeString)
-                        .Append('<')
-                        .Append(typeModel.TypeName)
-                        .Append(">, ")
-                        .Append(MaybeTypeString)
-                        .Append('<')
-                        .Append(member.TypeName)
-                        .Append(">>");
-                }
-                else
-                {
-                    stringBuilder
-                        .Append(OptionalOfTypeString)
-                        .Append('<')
-                        .Append(MaybeTypeString)
-                        .Append('<')
-                        .Append(typeModel.TypeName)
-                        .Append(">, ")
-                        .Append(member.TypeName)
-                        .Append('>');
-                }
-
-                break;
-            }
-            default:
-                throw new InvalidOperationException($"Invalid optics kind: {kind}");
-        }
+            (OpticsKind.Lens, false) => $"{LensOfTypeString}<{typeModel.TypeName}, {member.TypeName}>",
+            (OpticsKind.Lens, true) => $"{LensOfTypeString}<{typeModel.TypeName}, {MaybeTypeString}<{member.TypeName}>>",
+            (OpticsKind.Optional, false) => $"{OptionalOfTypeString}<{MaybeTypeString}<{typeModel.TypeName}>, {member.TypeName}>",
+            (OpticsKind.Optional, true) => $"{LensOfTypeString}<{MaybeTypeString}<{typeModel.TypeName}>, {MaybeTypeString}<{member.TypeName}>>",
+            _ => throw new InvalidOperationException($"Invalid optics kind: {kind}"),
+        };
     }
 
     private static void AppendFactoryCall(
@@ -588,50 +545,61 @@ internal static class Helpers
         string indentation
     )
     {
-        AppendOpticType(stringBuilder, typeModel, member, kind);
-        stringBuilder.AppendLine(".Of(");
+        stringBuilder.AppendLine($"{GetOpticType(typeModel, member, kind)}.Of(");
 
         switch (kind, member.IsNullable)
         {
             case (OpticsKind.Lens, false):
             {
-                stringBuilder.Append(indentation).Append("    getter: static source => source.").Append(member.Name).AppendLine(",");
-                stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source with");
-                stringBuilder.Append(indentation).AppendLine("    {");
-                stringBuilder.Append(indentation).Append("        ").Append(member.Name).AppendLine(" = value,");
-                stringBuilder.Append(indentation).AppendLine("    }");
+                stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source.{member.Name},");
+                stringBuilder.AppendLine($"{indentation}{Indent}setter: static (source, value) => source with");
+                stringBuilder.AppendLine($"{indentation}{Indent}{{");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{member.Name} = value,");
+                stringBuilder.AppendLine($"{indentation}{Indent}}}");
 
                 break;
             }
             case (OpticsKind.Lens, true):
             {
-                stringBuilder.Append(indentation).Append("    getter: static source => source is { ").Append(member.Name).AppendLine(": { } value }");
-                stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).AppendLine(".Just(value)");
-                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
-                stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source with");
-                stringBuilder.Append(indentation).AppendLine("    {");
-                stringBuilder.Append(indentation).Append("        ").Append(member.Name).AppendLine(" = value is { IsJust: true, Value: var value2 } ? value2 : null,");
-                stringBuilder.Append(indentation).AppendLine("    }");
+                stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source is {{ {member.Name}: {{ }} value }}");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? {MaybeTypeString}.Just(value)");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}: {MaybeTypeString}.Nothing<{member.TypeName}>(),");
+                stringBuilder.AppendLine($"{indentation}{Indent}setter: static (source, value) => source with");
+                stringBuilder.AppendLine($"{indentation}{Indent}{{");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{member.Name} = value is {{ IsJust: true, Value: var value2 }} ? value2 : null,");
+                stringBuilder.AppendLine($"{indentation}{Indent}}}");
 
                 break;
             }
             case (OpticsKind.Optional, false):
             {
-                stringBuilder.Append(indentation).AppendLine("    optionalGetter: static source => source.IsJust");
-                stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).Append(".Just(source.Value.").Append(member.Name).AppendLine(")");
-                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
-                AppendOptionalSetter(stringBuilder, typeModel, member, indentation, isNullable: false);
+                stringBuilder.AppendLine($"{indentation}{Indent}optionalGetter: static source => source.IsJust");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? {MaybeTypeString}.Just(source.Value.{member.Name})");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}: {MaybeTypeString}.Nothing<{member.TypeName}>(),");
+                AppendOptionalSetter(
+                    stringBuilder,
+                    typeModel,
+                    member,
+                    isNullable: false,
+                    indentation: $"{indentation}{Indent}"
+                );
 
                 break;
             }
             case (OpticsKind.Optional, true):
             {
-                stringBuilder.Append(indentation).AppendLine("    getter: static source => source is { IsJust: true, Value: { } value }");
-                stringBuilder.Append(indentation).Append("        ? value.").Append(member.Name).AppendLine(" is { } value2");
-                stringBuilder.Append(indentation).Append("            ? ").Append(MaybeTypeString).AppendLine(".Just(value2)");
-                stringBuilder.Append(indentation).Append("            : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">()");
-                stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(member.TypeName).AppendLine(">(),");
-                AppendOptionalSetter(stringBuilder, typeModel, member, indentation, isNullable: true);
+                stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source is {{ IsJust: true, Value: {{ }} value }}");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? value.{member.Name} is {{ }} value2");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{Indent}? {MaybeTypeString}.Just(value2)");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{Indent}: {MaybeTypeString}.Nothing<{member.TypeName}>()");
+                stringBuilder.AppendLine($"{indentation}{Indent}{Indent}: {MaybeTypeString}.Nothing<{member.TypeName}>(),");
+                AppendOptionalSetter(
+                    stringBuilder,
+                    typeModel,
+                    member,
+                    isNullable: true,
+                    indentation: $"{indentation}{Indent}"
+                );
 
                 break;
             }
@@ -639,35 +607,32 @@ internal static class Helpers
                 throw new InvalidOperationException($"Invalid optics kind: {kind}");
         }
 
-        stringBuilder.Append(indentation).AppendLine(");");
+        stringBuilder.AppendLine($"{indentation});");
 
         #region Local Functions
         static void AppendOptionalSetter(
             StringBuilder stringBuilder,
             TypeGenerationModel typeModel,
             MemberGenerationModel member,
-            string indentation,
-            bool isNullable
+            bool isNullable,
+            string indentation
         )
         {
-            stringBuilder.Append(indentation).AppendLine("    setter: static (source, value) => source.IsJust");
-            stringBuilder.Append(indentation).Append("        ? ").Append(MaybeTypeString).AppendLine(".Just(source.Value with");
-            stringBuilder.Append(indentation).AppendLine("        {");
-            stringBuilder.Append(indentation).Append("            ").Append(member.Name).Append(" = value");
+            var valueExpression = isNullable
+                ? "value is { IsJust: true, Value: var value2 } ? value2 : null"
+                : "value";
 
-            if (isNullable)
-            {
-                stringBuilder.Append(" is { IsJust: true, Value: var value2 } ? value2 : null");
-            }
-
-            stringBuilder.AppendLine(",");
-            stringBuilder.Append(indentation).AppendLine("        })");
-            stringBuilder.Append(indentation).Append("        : ").Append(MaybeTypeString).Append(".Nothing<").Append(typeModel.TypeName).AppendLine(">()");
+            stringBuilder.AppendLine($"{indentation}setter: static (source, value) => source.IsJust");
+            stringBuilder.AppendLine($"{indentation}{Indent}? {MaybeTypeString}.Just(source.Value with");
+            stringBuilder.AppendLine($"{indentation}{Indent}{{");
+            stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{member.Name} = {valueExpression},");
+            stringBuilder.AppendLine($"{indentation}{Indent}}})");
+            stringBuilder.AppendLine($"{indentation}{Indent}: {MaybeTypeString}.Nothing<{typeModel.TypeName}>()");
         }
         #endregion
     }
 
-    public static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
+    private static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
     {
         var members = GetValidMemberSymbols(typeSymbol);
         var builder = ImmutableArray.CreateBuilder<MemberGenerationModel>(members.Length);

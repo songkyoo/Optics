@@ -6,6 +6,54 @@ namespace Macaron.Optics.Tests;
 public class GenerationModelComparerTests
 {
     [Test]
+    public void TypeComparer_When_ModelsAreStructurallyEqual_Should_EqualAndHaveSameHashCode()
+    {
+        var x = CreatePersonType();
+        var y = CreatePersonType();
+        var comparer = TypeGenerationModelComparer.Instance;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(comparer.Equals(x, x), Is.True);
+            Assert.That(comparer.Equals(x, y), Is.True);
+            Assert.That(comparer.GetHashCode(x), Is.EqualTo(comparer.GetHashCode(y)));
+        });
+    }
+
+    [Test]
+    public void TypeComparer_When_OutputRelevantValuesDiffer_Should_NotEqual()
+    {
+        var baseline = CreatePersonType();
+        var comparer = TypeGenerationModelComparer.Instance;
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(
+                comparer.Equals(
+                    baseline,
+                    baseline with { FullyQualifiedName = "global::Example.OtherPerson" }
+                ),
+                Is.False
+            );
+            Assert.That(
+                comparer.Equals(
+                    baseline,
+                    baseline with
+                    {
+                        Members = [new MemberGenerationModel(
+                            Name: "Name",
+                            TypeName: "global::System.String",
+                            IsNullable: true
+                        )],
+                    }
+                ),
+                Is.False
+            );
+            Assert.That(comparer.Equals(baseline, null), Is.False);
+        });
+    }
+
+    [Test]
     public void OfComparer_When_ModelsAreStructurallyEqual_Should_EqualAndHaveSameHashCode()
     {
         var x = new OfGenerationModel(
@@ -33,9 +81,12 @@ public class GenerationModelComparerTests
             LensTypes: [CreatePersonType()],
             OptionalTypes: [CreateAddressType()]
         );
-        var changedTypeName = baseline with
+        var changedFullyQualifiedName = baseline with
         {
-            LensTypes = [CreatePersonType() with { TypeName = "global::Example.OtherPerson" }],
+            LensTypes = [CreatePersonType() with
+            {
+                FullyQualifiedName = "global::Example.OtherPerson",
+            }],
         };
         var changedMember = baseline with
         {
@@ -58,7 +109,7 @@ public class GenerationModelComparerTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(comparer.Equals(baseline, changedTypeName), Is.False);
+            Assert.That(comparer.Equals(baseline, changedFullyQualifiedName), Is.False);
             Assert.That(comparer.Equals(baseline, changedMember), Is.False);
             Assert.That(comparer.Equals(baseline, changedKind), Is.False);
             Assert.That(comparer.Equals(baseline, null), Is.False);
@@ -129,7 +180,9 @@ public class GenerationModelComparerTests
     private static TypeGenerationModel CreatePersonType()
     {
         return new TypeGenerationModel(
-            TypeName: "global::Example.Person",
+            Name: "Person",
+            Arity: 0,
+            FullyQualifiedName: "global::Example.Person",
             Members: [new MemberGenerationModel("Name", "global::System.String", false)]
         );
     }
@@ -137,7 +190,9 @@ public class GenerationModelComparerTests
     private static TypeGenerationModel CreateAddressType()
     {
         return new TypeGenerationModel(
-            TypeName: "global::Example.Address",
+            Name: "Address",
+            Arity: 0,
+            FullyQualifiedName: "global::Example.Address",
             Members: [new MemberGenerationModel("City", "global::System.String", false)]
         );
     }

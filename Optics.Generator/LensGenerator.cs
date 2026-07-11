@@ -26,6 +26,14 @@ public class LensGenerator : IIncrementalGenerator
             .Collect()
             .Select(static (typeContexts, _) => CreateOfGenerationModel(typeContexts))
             .WithComparer(OfGenerationModelComparer.Instance);
+        var lensTypeProvider = generationModelProvider
+            .SelectMany(static (generationModel, _) => generationModel.LensTypes)
+            .WithComparer(TypeGenerationModelComparer.Instance)
+            .WithTrackingName("LensTypeGenerationModels");
+        var optionalTypeProvider = generationModelProvider
+            .SelectMany(static (generationModel, _) => generationModel.OptionalTypes)
+            .WithComparer(TypeGenerationModelComparer.Instance)
+            .WithTrackingName("OptionalTypeGenerationModels");
         var diagnosticProvider = analysisResultProvider
             .Where(static result => result is AnalysisFailure<TypeContext>)
             .Select(static (result, _) => ((AnalysisFailure<TypeContext>)result).Diagnostic);
@@ -36,22 +44,22 @@ public class LensGenerator : IIncrementalGenerator
                 sourceProductionContext.ReportDiagnostic(diagnostic)
         );
         context.RegisterSourceOutput(
-            source: generationModelProvider,
-            action: static (sourceProductionContext, generationModel) =>
-            {
-                AddSource(
-                    sourceProductionContext: sourceProductionContext,
-                    lensOfTypeName: "LensOf",
-                    typeModels: generationModel.LensTypes,
-                    kind: Lens
-                );
-                AddSource(
-                    sourceProductionContext: sourceProductionContext,
-                    lensOfTypeName: "OptionalOf",
-                    typeModels: generationModel.OptionalTypes,
-                    kind: Optional
-                );
-            }
+            source: lensTypeProvider,
+            action: static (sourceProductionContext, typeModel) => AddSource(
+                sourceProductionContext,
+                lensOfTypeName: "LensOf",
+                typeModel,
+                kind: Lens
+            )
+        );
+        context.RegisterSourceOutput(
+            source: optionalTypeProvider,
+            action: static (sourceProductionContext, typeModel) => AddSource(
+                sourceProductionContext,
+                lensOfTypeName: "OptionalOf",
+                typeModel,
+                kind: Optional
+            )
         );
     }
     #endregion

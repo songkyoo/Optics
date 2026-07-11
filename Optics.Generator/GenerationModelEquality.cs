@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using static System.StringComparison;
 
 namespace Macaron.Optics.Generator;
 
@@ -32,7 +33,7 @@ internal static class GenerationModelEquality
             return true;
         }
 
-        if (!string.Equals(x.TypeName, y.TypeName, StringComparison.Ordinal)
+        if (!string.Equals(x.FullyQualifiedName, y.FullyQualifiedName, comparisonType: Ordinal)
             || x.Members.Length != y.Members.Length
         )
         {
@@ -59,7 +60,7 @@ internal static class GenerationModelEquality
 
         for (var i = 0; i < x.Length; ++i)
         {
-            if (!string.Equals(x[i], y[i], StringComparison.Ordinal))
+            if (!string.Equals(x[i], y[i], Ordinal))
             {
                 return false;
             }
@@ -80,7 +81,7 @@ internal static class GenerationModelEquality
 
     public static int AddTypeHashCode(int hash, TypeGenerationModel type)
     {
-        hash = AddHashCode(hash, type.TypeName);
+        hash = AddHashCode(hash, type.FullyQualifiedName);
 
         foreach (var member in type.Members)
         {

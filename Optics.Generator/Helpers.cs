@@ -273,8 +273,8 @@ internal static class Helpers
             }
         }
 
-        lensTypes.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
-        optionalTypes.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
+        lensTypes.Sort(static (x, y) => string.CompareOrdinal(x.FullyQualifiedName, y.FullyQualifiedName));
+        optionalTypes.Sort(static (x, y) => string.CompareOrdinal(x.FullyQualifiedName, y.FullyQualifiedName));
 
         return new OfGenerationModel(
             LensTypes: lensTypes.ToImmutable(),
@@ -373,36 +373,17 @@ internal static class Helpers
             };
         }
 
-        static string GetHintName(INamedTypeSymbol typeSymbol)
-        {
-            var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
-            var qualifiedName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
-
-            const uint fnvPrime = 16777619;
-            const uint offsetBasis = 2166136261;
-
-            var bytes = Encoding.UTF8.GetBytes($"{assemblyName}, {qualifiedName}");
-            var hash = offsetBasis;
-
-            foreach (var b in bytes)
-            {
-                hash ^= b;
-                hash *= fnvPrime;
-            }
-
-            return $"{typeSymbol.Name}_{typeSymbol.Arity}.{hash:x8}.g.cs";
-        }
         #endregion
     }
 
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
-        ImmutableArray<TypeGenerationModel> typeModels,
+        TypeGenerationModel typeModel,
         OpticsKind kind
     )
     {
-        if (typeModels.IsDefaultOrEmpty)
+        if (typeModel.Members.IsDefaultOrEmpty)
         {
             return;
         }
@@ -417,36 +398,27 @@ internal static class Helpers
         stringBuilder.AppendLine($"{{");
 
         // begin extension methods
-        stringBuilder.AppendLine($"{typeIndent}internal static class {lensOfTypeName}Extensions");
+        stringBuilder.AppendLine($"{typeIndent}internal static partial class {lensOfTypeName}Extensions");
         stringBuilder.AppendLine($"{typeIndent}{{");
 
-        for (int i = 0; i < typeModels.Length; ++i)
+        var fullyQualifiedName = typeModel.FullyQualifiedName;
+
+        for (var i = 0; i < typeModel.Members.Length; ++i)
         {
-            var typeModel = typeModels[i];
-            var typeName = typeModel.TypeName;
+            var member = typeModel.Members[i];
+            var opticType = GetOpticType(typeModel, member, kind);
 
-            for (int j = 0; j < typeModel.Members.Length; ++j)
-            {
-                var member = typeModel.Members[j];
-                var opticType = GetOpticType(typeModel, member, kind);
+            stringBuilder.AppendLine($"{memberIndent}public static {opticType} {member.Name}(");
+            stringBuilder.AppendLine($"{bodyIndent}this {lensOfTypeName}<{fullyQualifiedName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
+            stringBuilder.AppendLine($"{memberIndent})");
+            stringBuilder.AppendLine($"{memberIndent}{{");
 
-                stringBuilder.AppendLine($"{memberIndent}public static {opticType} {member.Name}(");
-                stringBuilder.AppendLine($"{bodyIndent}this {lensOfTypeName}<{typeName}> {char.ToLower(lensOfTypeName[0])}{lensOfTypeName[1..]}");
-                stringBuilder.AppendLine($"{memberIndent})");
-                stringBuilder.AppendLine($"{memberIndent}{{");
+            stringBuilder.Append($"{bodyIndent}return ");
+            AppendFactoryCall(stringBuilder, typeModel, member, kind, bodyIndent);
 
-                stringBuilder.Append($"{bodyIndent}return ");
-                AppendFactoryCall(stringBuilder, typeModel, member, kind, bodyIndent);
+            stringBuilder.AppendLine($"{memberIndent}}}");
 
-                stringBuilder.AppendLine($"{memberIndent}}}");
-
-                if (j < typeModel.Members.Length - 1)
-                {
-                    stringBuilder.AppendLine();
-                }
-            }
-
-            if (i < typeModels.Length - 1)
+            if (i < typeModel.Members.Length - 1)
             {
                 stringBuilder.AppendLine();
             }
@@ -458,8 +430,10 @@ internal static class Helpers
         // end namespace
         stringBuilder.AppendLine($"}}");
 
+        var hintName = GetHintName(typeModel.Name, typeModel.Arity, fullyQualifiedName);
+
         sourceProductionContext.AddSource(
-            hintName: $"{lensOfTypeName}Extensions.g.cs",
+            hintName: $"{lensOfTypeName}Extensions.{hintName}",
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
         );
     }
@@ -546,10 +520,10 @@ internal static class Helpers
     {
         return (kind, member.IsNullable) switch
         {
-            (OpticsKind.Lens, false) => $"{LensOfTypeString}<{typeModel.TypeName}, {member.TypeName}>",
-            (OpticsKind.Lens, true) => $"{LensOfTypeString}<{typeModel.TypeName}, {MaybeTypeString}<{member.TypeName}>>",
-            (OpticsKind.Optional, false) => $"{OptionalOfTypeString}<{MaybeTypeString}<{typeModel.TypeName}>, {member.TypeName}>",
-            (OpticsKind.Optional, true) => $"{LensOfTypeString}<{MaybeTypeString}<{typeModel.TypeName}>, {MaybeTypeString}<{member.TypeName}>>",
+            (OpticsKind.Lens, false) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {member.TypeName}>",
+            (OpticsKind.Lens, true) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {MaybeTypeString}<{member.TypeName}>>",
+            (OpticsKind.Optional, false) => $"{OptionalOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {member.TypeName}>",
+            (OpticsKind.Optional, true) => $"{LensOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {MaybeTypeString}<{member.TypeName}>>",
             _ => throw new InvalidOperationException($"Invalid optics kind: {kind}"),
         };
     }
@@ -644,7 +618,7 @@ internal static class Helpers
             stringBuilder.AppendLine($"{indentation}{Indent}{{");
             stringBuilder.AppendLine($"{indentation}{Indent}{Indent}{member.Name} = {valueExpression},");
             stringBuilder.AppendLine($"{indentation}{Indent}}})");
-            stringBuilder.AppendLine($"{indentation}{Indent}: {MaybeTypeString}.Nothing<{typeModel.TypeName}>()");
+            stringBuilder.AppendLine($"{indentation}{Indent}: {MaybeTypeString}.Nothing<{typeModel.FullyQualifiedName}>()");
         }
         #endregion
     }
@@ -673,7 +647,9 @@ internal static class Helpers
         }
 
         return new TypeGenerationModel(
-            TypeName: typeSymbol.ToDisplayString(FullyQualifiedFormat),
+            Name: typeSymbol.Name,
+            Arity: typeSymbol.Arity,
+            FullyQualifiedName: typeSymbol.ToDisplayString(FullyQualifiedFormat),
             Members: builder.ToImmutable()
         );
 
@@ -754,6 +730,36 @@ internal static class Helpers
         stringBuilder.AppendLine();
 
         return stringBuilder;
+    }
+
+    private static uint GetStableHash(string value)
+    {
+        const uint fnvPrime = 16777619;
+        const uint offsetBasis = 2166136261;
+
+        var hash = offsetBasis;
+
+        foreach (var b in Encoding.UTF8.GetBytes(value))
+        {
+            hash ^= b;
+            hash *= fnvPrime;
+        }
+
+        return hash;
+    }
+
+    private static string GetHintName(INamedTypeSymbol typeSymbol)
+    {
+        return GetHintName(
+            typeSymbol.Name,
+            typeSymbol.Arity,
+            typeSymbol.ToDisplayString(FullyQualifiedFormat)
+        );
+    }
+
+    private static string GetHintName(string name, int arity, string fullyQualifiedName)
+    {
+        return $"{name}_{arity}.{GetStableHash(fullyQualifiedName):x8}.g.cs";
     }
 
     private static string GetEscapedKeyword(string keyword)

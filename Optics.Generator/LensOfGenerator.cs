@@ -46,14 +46,14 @@ public class LensOfGenerator : IIncrementalGenerator
         )
         {
             var attributeContextProvider = analysisResultProvider
-                .Where(static result => result is AnalysisResult<AttributeContext>.Success)
-                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Success)result).Context);
+                .Where(static result => result is AnalysisSuccess<AttributeContext>)
+                .Select(static (result, _) => ((AnalysisSuccess<AttributeContext>)result).Context);
             var generationModelProvider = attributeContextProvider
                 .Select(static (attributeContext, _) => CreateAttributeGenerationModel(attributeContext))
                 .WithComparer(AttributeGenerationModelComparer.Instance);
             var diagnosticProvider = analysisResultProvider
-                .Where(static result => result is AnalysisResult<AttributeContext>.Failure)
-                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Failure)result).Diagnostic);
+                .Where(static result => result is AnalysisFailure<AttributeContext>)
+                .Select(static (result, _) => ((AnalysisFailure<AttributeContext>)result).Diagnostic);
 
             context.RegisterSourceOutput(
                 source: diagnosticProvider,

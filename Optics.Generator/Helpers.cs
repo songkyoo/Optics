@@ -8,6 +8,7 @@ using Microsoft.CodeAnalysis.Text;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFacts;
 using static Microsoft.CodeAnalysis.SymbolDisplayFormat;
 using static Microsoft.CodeAnalysis.SymbolDisplayMiscellaneousOptions;
+using static Macaron.Optics.Generator.DiagnosticDescriptors;
 
 namespace Macaron.Optics.Generator;
 
@@ -20,81 +21,6 @@ internal static class Helpers
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
-    #endregion
-
-    #region Types
-    public abstract record AnalysisResult<TContext>
-    {
-        public sealed record Success(TContext Context) : AnalysisResult<TContext>;
-
-        public sealed record Failure(Diagnostic Diagnostic) : AnalysisResult<TContext>;
-    }
-
-    public abstract record AttributeContext;
-
-    public sealed record LensOfAttributeContext(
-        INamedTypeSymbol ContainingTypeSymbol,
-        INamedTypeSymbol TypeSymbol
-    ) : AttributeContext;
-
-    public sealed record OptionalOfAttributeContext(
-        INamedTypeSymbol ContainingTypeSymbol,
-        INamedTypeSymbol TypeSymbol
-    ) : AttributeContext;
-
-    public abstract record TypeContext;
-
-    public sealed record LensOfTypeContext(
-        INamedTypeSymbol Symbol
-    ) : TypeContext;
-
-    public sealed record OptionalOfTypeContext(
-        INamedTypeSymbol Symbol
-    ) : TypeContext;
-
-    #endregion
-
-    #region Diagnostics
-    private static readonly DiagnosticDescriptor OpticsTargetTypeCannotBeNullableRule = new(
-        id: "MOPT0001",
-        title: "Optics target type cannot be nullable",
-        messageFormat: "Type '{0}' is nullable. Nullable types are not supported as optics targets.",
-        category: "Usage",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
-    private static readonly DiagnosticDescriptor OpticsTargetTypeMustSupportWithExpressionRule = new(
-        id: "MOPT0002",
-        title: "Optics target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used as an optics target",
-        category: "Usage",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
-    private static readonly DiagnosticDescriptor OpticsAttributeMustBeOnStaticClassRule = new(
-        id: "MOPT0003",
-        title: "Optics attribute must be applied to a static class",
-        messageFormat: "Class '{0}' must be static to use optics attribute",
-        category: "Usage",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
-    private static readonly DiagnosticDescriptor OpticsAttributeTargetMustSupportWithExpressionRule = new(
-        id: "MOPT0004",
-        title: "Optics attribute target type must support 'with' expression",
-        messageFormat: "Type '{0}' must be a record or struct to be used with optics attribute",
-        category: "Usage",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
-    private static readonly DiagnosticDescriptor OpticsAttributeTargetMustBeSpecifiedRule = new(
-        id: "MOPT0005",
-        title: "Target type must be specified for optics attribute",
-        messageFormat: "Class '{0}' is not nested in a target type. Specify the target type explicitly.",
-        category: "Usage",
-        DiagnosticSeverity.Error,
-        isEnabledByDefault: true
-    );
     #endregion
 
     #region Methods
@@ -187,7 +113,7 @@ internal static class Helpers
             typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
         )
         {
-            return new AnalysisResult<TypeContext>.Failure(
+            return new AnalysisFailure<TypeContext>(
                 Diagnostic.Create(
                     descriptor: OpticsTargetTypeCannotBeNullableRule,
                     location: typeArgument.GetLocation(),
@@ -199,7 +125,7 @@ internal static class Helpers
         // with 문을 지원하는 형식만 사용한다.
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return new AnalysisResult<TypeContext>.Failure(
+            return new AnalysisFailure<TypeContext>(
                 Diagnostic.Create(
                     descriptor: OpticsTargetTypeMustSupportWithExpressionRule,
                     location: typeArgument.GetLocation(),
@@ -215,7 +141,7 @@ internal static class Helpers
             _ => throw new InvalidOperationException($"Invalid type: {type}"),
         };
 
-        return new AnalysisResult<TypeContext>.Success(typeContext);
+        return new AnalysisSuccess<TypeContext>(typeContext);
 
         #region Local Functions
         static GenericNameSyntax GetGenericNameFromInvocation(
@@ -249,7 +175,7 @@ internal static class Helpers
 
         if (!containingTypeSymbol.IsStatic)
         {
-            return new AnalysisResult<AttributeContext>.Failure(
+            return new AnalysisFailure<AttributeContext>(
                 Diagnostic.Create(
                     descriptor: OpticsAttributeMustBeOnStaticClassRule,
                     location,
@@ -269,7 +195,7 @@ internal static class Helpers
 
         if (typeSymbol is null)
         {
-            return new AnalysisResult<AttributeContext>.Failure(
+            return new AnalysisFailure<AttributeContext>(
                 Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
                     location,
@@ -280,7 +206,7 @@ internal static class Helpers
 
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return new AnalysisResult<AttributeContext>.Failure(
+            return new AnalysisFailure<AttributeContext>(
                 Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
                     location,
@@ -302,7 +228,7 @@ internal static class Helpers
             _ => throw new InvalidOperationException($"Invalid type: {attribute.AttributeClass}"),
         };
 
-        return new AnalysisResult<AttributeContext>.Success(attributeContext);
+        return new AnalysisSuccess<AttributeContext>(attributeContext);
     }
 
     public static OfGenerationModel CreateOfGenerationModel(ImmutableArray<TypeContext> typeContexts)

@@ -20,15 +20,15 @@ public class LensGenerator : IIncrementalGenerator
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
         var typeContextProvider = analysisResultProvider
-            .Where(static result => result is AnalysisResult<TypeContext>.Success)
-            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context);
+            .Where(static result => result is AnalysisSuccess<TypeContext>)
+            .Select(static (result, _) => ((AnalysisSuccess<TypeContext>)result).Context);
         var generationModelProvider = typeContextProvider
             .Collect()
             .Select(static (typeContexts, _) => CreateOfGenerationModel(typeContexts))
             .WithComparer(OfGenerationModelComparer.Instance);
         var diagnosticProvider = analysisResultProvider
-            .Where(static result => result is AnalysisResult<TypeContext>.Failure)
-            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Failure)result).Diagnostic);
+            .Where(static result => result is AnalysisFailure<TypeContext>)
+            .Select(static (result, _) => ((AnalysisFailure<TypeContext>)result).Diagnostic);
 
         context.RegisterSourceOutput(
             source: diagnosticProvider,

@@ -18,8 +18,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Macaron.Optics.Core" Version="1.0.9" />
-    <PackageReference Include="Macaron.Optics.Generator" Version="1.0.8" />
+    <ProjectReference Include="..\Optics.Core\Optics.Core.csproj" PrivateAssets="none" />
+    <ProjectReference Include="..\Optics.Generator\Optics.Generator.csproj" PrivateAssets="none" />
   </ItemGroup>
 
 </Project>

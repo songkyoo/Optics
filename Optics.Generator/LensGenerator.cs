@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static Macaron.Optics.Generator.Helpers;
 
@@ -15,48 +14,83 @@ public class LensGenerator : IIncrementalGenerator
         var valueProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
-                predicate: static (syntaxNode, _) => syntaxNode is InvocationExpressionSyntax,
+                predicate: static (syntaxNode, _) => IsOfInvocationCandidate(syntaxNode),
                 transform: static (generatorSyntaxContext, _) => GetTypeContext(generatorSyntaxContext)
             )
+            .Where(static typeContext => !ReferenceEquals(typeContext, TypeContext.Empty))
             .Collect();
 
         context.RegisterSourceOutput(
             source: valueProvider,
             action: (sourceProductionContext, typeContexts) =>
             {
-                foreach (var diagnostic in typeContexts.SelectMany(static context => context.Diagnostics))
-                {
-                    sourceProductionContext.ReportDiagnostic(diagnostic);
-                }
-
                 var lensOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
                 var optionalOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+                var lensOfTypeSymbols = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+                var optionalOfTypeSymbols = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
 
                 foreach (var typeContext in typeContexts)
                 {
+                    foreach (var diagnostic in typeContext.Diagnostics)
+                    {
+                        sourceProductionContext.ReportDiagnostic(diagnostic);
+                    }
+
                     switch (typeContext)
                     {
-                        case LensOfTypeContext { Symbol: { } symbol }:
+                        case LensOfTypeContext { Symbol: { } symbol } when lensOfTypeSymbols.Add(symbol):
                             lensOfTypeSymbolsBuilder.Add(symbol);
                             break;
-                        case OptionalOfTypeContext { Symbol: { } symbol }:
+                        case OptionalOfTypeContext { Symbol: { } symbol } when optionalOfTypeSymbols.Add(symbol):
                             optionalOfTypeSymbolsBuilder.Add(symbol);
                             break;
                     }
                 }
 
+                var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(
+                    SymbolEqualityComparer.Default
+                );
+                var lensOfTypeModels = GetTypeModels(lensOfTypeSymbolsBuilder, typeModels);
+                var optionalOfTypeModels = GetTypeModels(optionalOfTypeSymbolsBuilder, typeModels);
+
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "LensOf",
-                    typeSymbols: lensOfTypeSymbolsBuilder.ToImmutable(),
+                    typeModels: lensOfTypeModels,
                     generateMembers: GenerateLensOfMembers
                 );
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "OptionalOf",
-                    typeSymbols: optionalOfTypeSymbolsBuilder.ToImmutable(),
+                    typeModels: optionalOfTypeModels,
                     generateMembers: GenerateOptionalOfMembers
                 );
+
+                #region Local Functions
+                static ImmutableArray<TypeGenerationModel> GetTypeModels(
+                    ImmutableArray<INamedTypeSymbol>.Builder typeSymbols,
+                    Dictionary<INamedTypeSymbol, TypeGenerationModel> typeModels
+                )
+                {
+                    var builder = ImmutableArray.CreateBuilder<TypeGenerationModel>(typeSymbols.Count);
+
+                    foreach (var typeSymbol in typeSymbols)
+                    {
+                        if (!typeModels.TryGetValue(typeSymbol, out var typeModel))
+                        {
+                            typeModel = CreateTypeGenerationModel(typeSymbol);
+                            typeModels.Add(typeSymbol, typeModel);
+                        }
+
+                        if (!typeModel.Members.IsEmpty)
+                        {
+                            builder.Add(typeModel);
+                        }
+                    }
+
+                    return builder.ToImmutable();
+                }
+                #endregion
             });
     }
     #endregion

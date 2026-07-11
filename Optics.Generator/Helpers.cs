@@ -65,6 +65,17 @@ internal static class Helpers
         INamedTypeSymbol Symbol,
         ImmutableArray<Diagnostic> Diagnostics
     ) : TypeContext(Diagnostics);
+
+    public sealed record TypeGenerationModel(
+        string TypeName,
+        ImmutableArray<MemberGenerationModel> Members
+    );
+
+    public readonly record struct MemberGenerationModel(
+        string Name,
+        string TypeName,
+        bool IsNullable
+    );
     #endregion
 
     #region Diagnostics
@@ -111,30 +122,54 @@ internal static class Helpers
     #endregion
 
     #region Methods
+    public static bool IsOfInvocationCandidate(SyntaxNode syntaxNode)
+    {
+        if (syntaxNode is not InvocationExpressionSyntax { ArgumentList.Arguments.Count: 0 } invocationExpressionSyntax)
+        {
+            return false;
+        }
+
+        return invocationExpressionSyntax.Expression switch
+        {
+            GenericNameSyntax
+            {
+                Identifier.ValueText: "Of",
+                TypeArgumentList.Arguments.Count: 1,
+            } => true,
+            MemberAccessExpressionSyntax
+            {
+                Name: GenericNameSyntax
+                {
+                    Identifier.ValueText: "Of",
+                    TypeArgumentList.Arguments.Count: 1,
+                },
+            } => true,
+            _ => false,
+        };
+    }
+
     public static TypeContext GetTypeContext(GeneratorSyntaxContext generatorSyntaxContext)
     {
-        if (generatorSyntaxContext.Node is not InvocationExpressionSyntax expressionSyntax)
-        {
-            return TypeContext.Empty;
-        }
+        var expressionSyntax = (InvocationExpressionSyntax)generatorSyntaxContext.Node;
+        var genericNameSyntax = GetGenericNameFromInvocation(expressionSyntax);
 
-        if (GetGenericNameFromInvocation(expressionSyntax) is not { } genericNameSyntax)
-        {
-            return TypeContext.Empty;
-        }
-
-        var semanticModel = generatorSyntaxContext.SemanticModel;
-        var methodSymbol = semanticModel.GetSymbolInfo(genericNameSyntax).Symbol as IMethodSymbol;
-
-        if (methodSymbol?.IsStatic is not true || methodSymbol.Name != "Of")
+        if (generatorSyntaxContext.SemanticModel.GetSymbolInfo(expressionSyntax).Symbol is not IMethodSymbol
+            {
+                IsStatic: true,
+                Name: "Of",
+                Arity: 1,
+                Parameters.Length: 0,
+            } methodSymbol
+        )
         {
             return TypeContext.Empty;
         }
 
         var typeArgumentList = genericNameSyntax.TypeArgumentList;
 
-        if (typeArgumentList.Arguments is not [{ } typeArgument] ||
-            semanticModel.GetSymbolInfo(typeArgument).Symbol is not INamedTypeSymbol typeSymbol
+        if (typeArgumentList.Arguments is not [{ } typeArgument]
+            || methodSymbol.TypeArguments is not [{ } typeArgumentSymbol]
+            || typeArgumentSymbol is not INamedTypeSymbol typeSymbol
         )
         {
             return TypeContext.Empty;
@@ -143,12 +178,28 @@ internal static class Helpers
         const int lensOfType = 1;
         const int optionalOfType = 2;
 
-        var type = methodSymbol.ContainingType.ToDisplayString(FullyQualifiedFormat) switch
+        var type = methodSymbol.ContainingType is
         {
-            LensOfTypeString => lensOfType,
-            OptionalOfTypeString => optionalOfType,
-            _ => 0,
-        };
+            Arity: 0,
+            ContainingType: null,
+            ContainingNamespace:
+            {
+                Name: "Optics",
+                ContainingNamespace:
+                {
+                    Name: "Macaron",
+                    ContainingNamespace.IsGlobalNamespace: true,
+                },
+            },
+            Name: var containingTypeName,
+        }
+            ? containingTypeName switch
+            {
+                "Lens" => lensOfType,
+                "Optional" => optionalOfType,
+                _ => 0,
+            }
+            : 0;
 
         if (type == 0)
         {
@@ -156,8 +207,8 @@ internal static class Helpers
         }
 
         // Nullable한 형식은 지원하지 않는다.
-        if ((typeSymbol.IsValueType && typeSymbol.ToString().EndsWith("?")) ||
-            typeArgument.ToString().EndsWith("?")
+        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated ||
+            typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
         )
         {
             return TypeContext.Empty with
@@ -197,7 +248,7 @@ internal static class Helpers
         };
 
         #region Local Functions
-        static GenericNameSyntax? GetGenericNameFromInvocation(
+        static GenericNameSyntax GetGenericNameFromInvocation(
             InvocationExpressionSyntax invocationExpressionSyntax
         )
         {
@@ -205,7 +256,7 @@ internal static class Helpers
             {
                 MemberAccessExpressionSyntax { Name: GenericNameSyntax genericName } => genericName,
                 GenericNameSyntax genericName => genericName,
-                _ => null
+                _ => throw new InvalidOperationException("Invocation is not a valid Of<T>() candidate"),
             };
         }
         #endregion
@@ -293,8 +344,15 @@ internal static class Helpers
 
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
     {
-        return GenerateLensOfMembers(
-            typeSymbol,
+        return GenerateLensOfMembers(CreateTypeGenerationModel(typeSymbol));
+    }
+
+    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
+        TypeGenerationModel typeModel
+    )
+    {
+        return GenerateMembers(
+            typeModel,
             getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
             {
                 var memberDeclaration = isNullable
@@ -334,8 +392,15 @@ internal static class Helpers
         INamedTypeSymbol typeSymbol
     )
     {
-        return GenerateLensOfMembers(
-            typeSymbol,
+        return GenerateOptionalOfMembers(CreateTypeGenerationModel(typeSymbol));
+    }
+
+    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(
+        TypeGenerationModel typeModel
+    )
+    {
+        return GenerateMembers(
+            typeModel,
             getSourceByMember: (typeName, memberTypeName, memberName, isNullable) =>
             {
                 var memberDeclaration = isNullable
@@ -380,15 +445,11 @@ internal static class Helpers
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
         string lensOfTypeName,
-        ImmutableArray<INamedTypeSymbol> typeSymbols,
-        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
+        ImmutableArray<TypeGenerationModel> typeModels,
+        Func<TypeGenerationModel, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
     )
     {
-        var uniqueTypeSymbols = typeSymbols
-            .Distinct<INamedTypeSymbol>(SymbolEqualityComparer.Default)
-            .ToImmutableArray();
-
-        if (uniqueTypeSymbols.Length == 0)
+        if (typeModels.IsDefaultOrEmpty)
         {
             return;
         }
@@ -403,17 +464,11 @@ internal static class Helpers
         stringBuilder.AppendLine($"    internal static class {lensOfTypeName}Extensions");
         stringBuilder.AppendLine($"    {{");
 
-        for (int i = 0; i < uniqueTypeSymbols.Length; ++i)
+        for (int i = 0; i < typeModels.Length; ++i)
         {
-            var typeSymbol = uniqueTypeSymbols[i];
-            var members = generateMembers(typeSymbol);
-
-            if (members.Length == 0)
-            {
-                continue;
-            }
-
-            var typeName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
+            var typeModel = typeModels[i];
+            var members = generateMembers(typeModel);
+            var typeName = typeModel.TypeName;
 
             for (int j = 0; j < members.Length; ++j)
             {
@@ -439,7 +494,7 @@ internal static class Helpers
                 }
             }
 
-            if (i < uniqueTypeSymbols.Length - 1)
+            if (i < typeModels.Length - 1)
             {
                 stringBuilder.AppendLine();
             }
@@ -599,30 +654,26 @@ internal static class Helpers
         #endregion
     }
 
-    private static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
-        INamedTypeSymbol typeSymbol,
-        Func<string, string, string, bool, (string, ImmutableArray<string>)> getSourceByMember
-    )
+    public static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
     {
         var members = GetValidMemberSymbols(typeSymbol);
-
-        if (members.Length == 0)
-        {
-            return ImmutableArray<(string, ImmutableArray<string>)>.Empty;
-        }
-
-        var builder = ImmutableArray.CreateBuilder<(string, ImmutableArray<string>)>();
-        var typeName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
+        var builder = ImmutableArray.CreateBuilder<MemberGenerationModel>(members.Length);
 
         foreach (var member in members)
         {
             var isNullable = IsNullable(member);
-            var memberTypeName = GetMemberTypeName(member, isNullable);
 
-            builder.Add(getSourceByMember(typeName, memberTypeName, GetEscapedKeyword(member.Name), isNullable));
+            builder.Add(new MemberGenerationModel(
+                Name: GetEscapedKeyword(member.Name),
+                TypeName: GetMemberTypeName(member, isNullable),
+                IsNullable: isNullable
+            ));
         }
 
-        return builder.ToImmutable();
+        return new TypeGenerationModel(
+            TypeName: typeSymbol.ToDisplayString(FullyQualifiedFormat),
+            Members: builder.MoveToImmutable()
+        );
 
         #region Local Functions
         static string GetMemberTypeName(ISymbol symbol, bool isNullable)
@@ -658,24 +709,54 @@ internal static class Helpers
         #endregion
     }
 
+    private static ImmutableArray<(string, ImmutableArray<string>)> GenerateMembers(
+        TypeGenerationModel typeModel,
+        Func<string, string, string, bool, (string, ImmutableArray<string>)> getSourceByMember
+    )
+    {
+        if (typeModel.Members.IsEmpty)
+        {
+            return ImmutableArray<(string, ImmutableArray<string>)>.Empty;
+        }
+
+        var builder = ImmutableArray.CreateBuilder<(string, ImmutableArray<string>)>(typeModel.Members.Length);
+
+        foreach (var member in typeModel.Members)
+        {
+            builder.Add(getSourceByMember(
+                typeModel.TypeName,
+                member.TypeName,
+                member.Name,
+                member.IsNullable
+            ));
+        }
+
+        return builder.MoveToImmutable();
+    }
+
     private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
     {
-        var result = new List<ISymbol>();
+        var builder = ImmutableArray.CreateBuilder<ISymbol>();
 
         for (var current = typeSymbol; current != null; current = current.BaseType)
         {
-            var members = current
-                .GetMembers()
-                .Where(symbol => symbol.DeclaredAccessibility == Accessibility.Public)
-                .Where(symbol =>
-                    (symbol is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
-                    (symbol is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
-                );
+            foreach (var member in current.GetMembers())
+            {
+                if (member.DeclaredAccessibility != Accessibility.Public)
+                {
+                    continue;
+                }
 
-            result.AddRange(members);
+                if ((member is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
+                    (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
+                )
+                {
+                    builder.Add(member);
+                }
+            }
         }
 
-        return result.Distinct(SymbolEqualityComparer.Default).ToImmutableArray();
+        return builder.ToImmutable();
     }
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)

@@ -87,6 +87,51 @@ public class GeneratorIncrementalTests
     }
 
     [Test]
+    public void LensGenerator_When_RequestOrderChanges_Should_CacheOutput()
+    {
+        const string sourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name);
+            public partial record Address(string City);
+
+            public static class Usage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Person>();
+                    _ = Lens.Of<Address>();
+                }
+            }
+            """;
+        const string updatedSourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name);
+            public partial record Address(string City);
+
+            public static class Usage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Address>();
+                    _ = Lens.Of<Person>();
+                }
+            }
+            """;
+
+        var result = RunAfterSourceChange<LensGenerator>(
+            sourceCode,
+            updatedSourceCode,
+            typeof(LensOf<>).Assembly
+        );
+
+        AssertOutputWasCached(result);
+    }
+
+    [Test]
     public void LensGenerator_When_TargetMemberIsAdded_Should_RegenerateOutput()
     {
         const string sourceCode =
@@ -190,6 +235,19 @@ public class GeneratorIncrementalTests
         params Assembly[] additionalAssemblies
     ) where TGenerator : IIncrementalGenerator, new()
     {
+        return RunAfterSourceChange<TGenerator>(
+            sourceCode,
+            sourceCode + appendedSourceCode,
+            additionalAssemblies
+        );
+    }
+
+    private static GeneratorRunResult RunAfterSourceChange<TGenerator>(
+        string sourceCode,
+        string updatedSourceCode,
+        params Assembly[] additionalAssemblies
+    ) where TGenerator : IIncrementalGenerator, new()
+    {
         var references = AppDomain
             .CurrentDomain
             .GetAssemblies()
@@ -221,7 +279,7 @@ public class GeneratorIncrementalTests
 
         driver = driver.RunGenerators(compilation);
 
-        var updatedSyntaxTree = syntaxTree.WithChangedText(SourceText.From(sourceCode + appendedSourceCode));
+        var updatedSyntaxTree = syntaxTree.WithChangedText(SourceText.From(updatedSourceCode));
         var updatedCompilation = compilation.ReplaceSyntaxTree(syntaxTree, updatedSyntaxTree);
 
         driver = driver.RunGenerators(updatedCompilation);

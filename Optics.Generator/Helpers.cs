@@ -444,6 +444,8 @@ internal static class Helpers
                 }
             }
 
+            builder.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
+
             return builder.ToImmutable();
         }
         #endregion

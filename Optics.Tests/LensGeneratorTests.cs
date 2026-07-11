@@ -233,32 +233,6 @@ public class LensGeneratorTests
             {
                 internal static class LensOfExtensions
                 {
-                    public static global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.String> Name(
-                        this LensOf<global::Macaron.Optics.Tests.Person> lensOf
-                    )
-                    {
-                        return global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.String>.Of(
-                            getter: static source => source.Name,
-                            setter: static (source, value) => source with
-                            {
-                                Name = value,
-                            }
-                        );
-                    }
-
-                    public static global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.Int32> Age(
-                        this LensOf<global::Macaron.Optics.Tests.Person> lensOf
-                    )
-                    {
-                        return global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.Int32>.Of(
-                            getter: static source => source.Age,
-                            setter: static (source, value) => source with
-                            {
-                                Age = value,
-                            }
-                        );
-                    }
-
                     public static global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Address, global::System.String> Street(
                         this LensOf<global::Macaron.Optics.Tests.Address> lensOf
                     )
@@ -281,6 +255,32 @@ public class LensGeneratorTests
                             setter: static (source, value) => source with
                             {
                                 City = value,
+                            }
+                        );
+                    }
+
+                    public static global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.String> Name(
+                        this LensOf<global::Macaron.Optics.Tests.Person> lensOf
+                    )
+                    {
+                        return global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.String>.Of(
+                            getter: static source => source.Name,
+                            setter: static (source, value) => source with
+                            {
+                                Name = value,
+                            }
+                        );
+                    }
+
+                    public static global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.Int32> Age(
+                        this LensOf<global::Macaron.Optics.Tests.Person> lensOf
+                    )
+                    {
+                        return global::Macaron.Optics.Lens<global::Macaron.Optics.Tests.Person, global::System.Int32>.Of(
+                            getter: static source => source.Age,
+                            setter: static (source, value) => source with
+                            {
+                                Age = value,
                             }
                         );
                     }

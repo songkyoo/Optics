@@ -162,6 +162,7 @@ internal static class Helpers
 
     public static AnalysisResult<AttributeContext>? GetAttributeContext(
         GeneratorAttributeSyntaxContext context,
+        OpticsKind kind,
         CancellationToken cancellationToken
     )
     {
@@ -217,17 +218,17 @@ internal static class Helpers
             );
         }
 
-        var attributeContext = attribute.AttributeClass?.ToDisplayString() switch
+        var attributeContext = kind switch
         {
-            LensOfAttributeName => (AttributeContext)new LensOfAttributeContext(
+            OpticsKind.Lens => (AttributeContext)new LensOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
                 TypeSymbol: typeSymbol
             ),
-            OptionalOfAttributeName => new OptionalOfAttributeContext(
+            OpticsKind.Optional => new OptionalOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
                 TypeSymbol: typeSymbol
             ),
-            _ => throw new InvalidOperationException($"Invalid type: {attribute.AttributeClass}"),
+            _ => throw new InvalidOperationException($"Invalid optics kind: {kind}"),
         };
 
         return new AnalysisSuccess<AttributeContext>(attributeContext);
@@ -235,58 +236,74 @@ internal static class Helpers
 
     public static OfGenerationModel CreateOfGenerationModel(ImmutableArray<TypeContext> typeContexts)
     {
-        var lensTypeSymbols = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
-        var optionalTypeSymbols = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+        var lensTypes = ImmutableArray.CreateBuilder<TypeGenerationModel>();
+        var optionalTypes = ImmutableArray.CreateBuilder<TypeGenerationModel>();
         var visitedLensTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
         var visitedOptionalTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var typeGenerationModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(
+            SymbolEqualityComparer.Default
+        );
 
         foreach (var typeContext in typeContexts)
         {
             switch (typeContext)
             {
-                case LensOfTypeContext { Symbol: { } symbol } when visitedLensTypes.Add(symbol):
-                    lensTypeSymbols.Add(symbol);
+                case LensOfTypeContext { Symbol: { } symbol }:
+                {
+                    AppendTypeGenerationModel(
+                        symbol,
+                        builder: lensTypes,
+                        visitedLensTypes,
+                        typeGenerationModels
+                    );
+
                     break;
-                case OptionalOfTypeContext { Symbol: { } symbol } when visitedOptionalTypes.Add(symbol):
-                    optionalTypeSymbols.Add(symbol);
+                }
+                case OptionalOfTypeContext { Symbol: { } symbol }:
+                {
+                    AppendTypeGenerationModel(
+                        symbol,
+                        builder: optionalTypes,
+                        visitedOptionalTypes,
+                        typeGenerationModels
+                    );
+
                     break;
+                }
             }
         }
 
-        var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(
-            SymbolEqualityComparer.Default
-        );
+        lensTypes.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
+        optionalTypes.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
 
         return new OfGenerationModel(
-            LensTypes: GetTypeModels(lensTypeSymbols, typeModels),
-            OptionalTypes: GetTypeModels(optionalTypeSymbols, typeModels)
+            LensTypes: lensTypes.ToImmutable(),
+            OptionalTypes: optionalTypes.ToImmutable()
         );
 
         #region Local Functions
-        static ImmutableArray<TypeGenerationModel> GetTypeModels(
-            ImmutableArray<INamedTypeSymbol>.Builder typeSymbols,
-            Dictionary<INamedTypeSymbol, TypeGenerationModel> typeModels
+        static void AppendTypeGenerationModel(
+            INamedTypeSymbol typeSymbol,
+            ImmutableArray<TypeGenerationModel>.Builder builder,
+            HashSet<INamedTypeSymbol> visitedTypes,
+            Dictionary<INamedTypeSymbol, TypeGenerationModel> typeGenerationModels
         )
         {
-            var builder = ImmutableArray.CreateBuilder<TypeGenerationModel>(typeSymbols.Count);
-
-            foreach (var typeSymbol in typeSymbols)
+            if (!visitedTypes.Add(typeSymbol))
             {
-                if (!typeModels.TryGetValue(typeSymbol, out var typeModel))
-                {
-                    typeModel = CreateTypeGenerationModel(typeSymbol);
-                    typeModels.Add(typeSymbol, typeModel);
-                }
-
-                if (!typeModel.Members.IsEmpty)
-                {
-                    builder.Add(typeModel);
-                }
+                return;
             }
 
-            builder.Sort(static (x, y) => string.CompareOrdinal(x.TypeName, y.TypeName));
+            if (!typeGenerationModels.TryGetValue(typeSymbol, out var typeModel))
+            {
+                typeModel = CreateTypeGenerationModel(typeSymbol);
+                typeGenerationModels.Add(typeSymbol, typeModel);
+            }
 
-            return builder.ToImmutable();
+            if (!typeModel.Members.IsEmpty)
+            {
+                builder.Add(typeModel);
+            }
         }
         #endregion
     }
@@ -634,23 +651,30 @@ internal static class Helpers
 
     private static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
     {
-        var members = GetValidMemberSymbols(typeSymbol);
-        var builder = ImmutableArray.CreateBuilder<MemberGenerationModel>(members.Length);
+        var builder = ImmutableArray.CreateBuilder<MemberGenerationModel>();
 
-        foreach (var member in members)
+        for (var current = typeSymbol; current != null; current = current.BaseType)
         {
-            var isNullable = IsNullable(member);
+            foreach (var member in current.GetMembers())
+            {
+                if (!IsValidMember(member))
+                {
+                    continue;
+                }
 
-            builder.Add(new MemberGenerationModel(
-                Name: GetEscapedKeyword(member.Name),
-                TypeName: GetMemberTypeName(member, isNullable),
-                IsNullable: isNullable
-            ));
+                var isNullable = IsNullable(member);
+
+                builder.Add(new MemberGenerationModel(
+                    Name: GetEscapedKeyword(member.Name),
+                    TypeName: GetMemberTypeName(member, isNullable),
+                    IsNullable: isNullable
+                ));
+            }
         }
 
         return new TypeGenerationModel(
             TypeName: typeSymbol.ToDisplayString(FullyQualifiedFormat),
-            Members: builder.MoveToImmutable()
+            Members: builder.ToImmutable()
         );
 
         #region Local Functions
@@ -687,29 +711,15 @@ internal static class Helpers
         #endregion
     }
 
-    private static ImmutableArray<ISymbol> GetValidMemberSymbols(INamedTypeSymbol typeSymbol)
+    private static bool IsValidMember(ISymbol member)
     {
-        var builder = ImmutableArray.CreateBuilder<ISymbol>();
-
-        for (var current = typeSymbol; current != null; current = current.BaseType)
+        if (member.DeclaredAccessibility != Accessibility.Public)
         {
-            foreach (var member in current.GetMembers())
-            {
-                if (member.DeclaredAccessibility != Accessibility.Public)
-                {
-                    continue;
-                }
-
-                if ((member is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol)) ||
-                    (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol))
-                )
-                {
-                    builder.Add(member);
-                }
-            }
+            return false;
         }
 
-        return builder.ToImmutable();
+        return (member is IPropertySymbol propertySymbol && IsValidProperty(propertySymbol))
+            || (member is IFieldSymbol fieldSymbol && IsValidField(fieldSymbol));
     }
 
     private static bool IsValidProperty(IPropertySymbol propertySymbol)

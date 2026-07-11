@@ -2,6 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using static Macaron.Optics.Generator.Helpers;
+using static Macaron.Optics.Generator.OpticsKind;
 
 namespace Macaron.Optics.Generator;
 
@@ -18,6 +19,7 @@ public class LensOfGenerator : IIncrementalGenerator
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
                 transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
                     generatorAttributeSyntaxContext,
+                    kind: Lens,
                     cancellationToken
                 )
             )
@@ -30,6 +32,7 @@ public class LensOfGenerator : IIncrementalGenerator
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
                 transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
                     generatorAttributeSyntaxContext,
+                    kind: Optional,
                     cancellationToken
                 )
             )

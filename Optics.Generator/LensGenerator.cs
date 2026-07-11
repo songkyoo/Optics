@@ -15,7 +15,10 @@ public class LensGenerator : IIncrementalGenerator
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => IsOfInvocationCandidate(syntaxNode),
-                transform: static (generatorSyntaxContext, _) => GetTypeContext(generatorSyntaxContext)
+                transform: static (generatorSyntaxContext, cancellationToken) => GetTypeContext(
+                    generatorSyntaxContext,
+                    cancellationToken
+                )
             )
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
@@ -24,7 +27,10 @@ public class LensGenerator : IIncrementalGenerator
             .Select(static (result, _) => ((AnalysisSuccess<TypeContext>)result).Context);
         var generationModelProvider = typeContextProvider
             .Collect()
-            .Select(static (typeContexts, _) => CreateOfGenerationModel(typeContexts))
+            .Select(static (typeContexts, cancellationToken) => CreateOfGenerationModel(
+                typeContexts,
+                cancellationToken
+            ))
             .WithComparer(OfGenerationModelComparer.Instance);
         var lensTypeProvider = generationModelProvider
             .SelectMany(static (generationModel, _) => generationModel.LensTypes)

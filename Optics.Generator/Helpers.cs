@@ -52,12 +52,17 @@ internal static class Helpers
         };
     }
 
-    public static AnalysisResult<TypeContext>? GetTypeContext(GeneratorSyntaxContext generatorSyntaxContext)
+    public static AnalysisResult<TypeContext>? GetTypeContext(
+        GeneratorSyntaxContext generatorSyntaxContext,
+        CancellationToken cancellationToken
+    )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var expressionSyntax = (InvocationExpressionSyntax)generatorSyntaxContext.Node;
         var genericNameSyntax = GetGenericNameFromInvocation(expressionSyntax);
 
-        if (generatorSyntaxContext.SemanticModel.GetSymbolInfo(expressionSyntax).Symbol is not IMethodSymbol
+        if (generatorSyntaxContext.SemanticModel.GetSymbolInfo(expressionSyntax, cancellationToken).Symbol is not IMethodSymbol
             {
                 IsStatic: true,
                 Name: "Of",
@@ -166,6 +171,8 @@ internal static class Helpers
         CancellationToken cancellationToken
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (context.TargetSymbol is not INamedTypeSymbol containingTypeSymbol)
         {
             return null;
@@ -234,7 +241,10 @@ internal static class Helpers
         return new AnalysisSuccess<AttributeContext>(attributeContext);
     }
 
-    public static OfGenerationModel CreateOfGenerationModel(ImmutableArray<TypeContext> typeContexts)
+    public static OfGenerationModel CreateOfGenerationModel(
+        ImmutableArray<TypeContext> typeContexts,
+        CancellationToken cancellationToken
+    )
     {
         var lensTypes = ImmutableArray.CreateBuilder<TypeGenerationModel>();
         var optionalTypes = ImmutableArray.CreateBuilder<TypeGenerationModel>();
@@ -246,6 +256,8 @@ internal static class Helpers
 
         foreach (var typeContext in typeContexts)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             switch (typeContext)
             {
                 case LensOfTypeContext { Symbol: { } symbol }:
@@ -254,7 +266,8 @@ internal static class Helpers
                         symbol,
                         builder: lensTypes,
                         visitedLensTypes,
-                        typeGenerationModels
+                        typeGenerationModels,
+                        cancellationToken
                     );
 
                     break;
@@ -265,13 +278,16 @@ internal static class Helpers
                         symbol,
                         builder: optionalTypes,
                         visitedOptionalTypes,
-                        typeGenerationModels
+                        typeGenerationModels,
+                        cancellationToken
                     );
 
                     break;
                 }
             }
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         lensTypes.Sort(static (x, y) => string.CompareOrdinal(x.FullyQualifiedName, y.FullyQualifiedName));
         optionalTypes.Sort(static (x, y) => string.CompareOrdinal(x.FullyQualifiedName, y.FullyQualifiedName));
@@ -286,7 +302,8 @@ internal static class Helpers
             INamedTypeSymbol typeSymbol,
             ImmutableArray<TypeGenerationModel>.Builder builder,
             HashSet<INamedTypeSymbol> visitedTypes,
-            Dictionary<INamedTypeSymbol, TypeGenerationModel> typeGenerationModels
+            Dictionary<INamedTypeSymbol, TypeGenerationModel> typeGenerationModels,
+            CancellationToken cancellationToken
         )
         {
             if (!visitedTypes.Add(typeSymbol))
@@ -296,7 +313,7 @@ internal static class Helpers
 
             if (!typeGenerationModels.TryGetValue(typeSymbol, out var typeModel))
             {
-                typeModel = CreateTypeGenerationModel(typeSymbol);
+                typeModel = CreateTypeGenerationModel(typeSymbol, cancellationToken);
                 typeGenerationModels.Add(typeSymbol, typeModel);
             }
 
@@ -308,8 +325,13 @@ internal static class Helpers
         #endregion
     }
 
-    public static AttributeGenerationModel CreateAttributeGenerationModel(AttributeContext attributeContext)
+    public static AttributeGenerationModel CreateAttributeGenerationModel(
+        AttributeContext attributeContext,
+        CancellationToken cancellationToken
+    )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var (kind, containingTypeSymbol, typeSymbol) = attributeContext switch
         {
             LensOfAttributeContext context => (
@@ -328,6 +350,7 @@ internal static class Helpers
 
         for (var current = containingTypeSymbol; current != null; current = current.ContainingType)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             containingTypes.Push(current);
         }
 
@@ -335,6 +358,7 @@ internal static class Helpers
 
         foreach (var containingType in containingTypes)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             typeDeclarations.Add(GetPartialTypeDeclarationString(containingType));
         }
 
@@ -345,7 +369,7 @@ internal static class Helpers
                 : containingTypeSymbol.ContainingNamespace.ToDisplayString(),
             TypeDeclarations: typeDeclarations.MoveToImmutable(),
             HintName: GetHintName(containingTypeSymbol),
-            TargetType: CreateTypeGenerationModel(typeSymbol)
+            TargetType: CreateTypeGenerationModel(typeSymbol, cancellationToken)
         );
 
         #region Local Functions
@@ -383,6 +407,10 @@ internal static class Helpers
         OpticsKind kind
     )
     {
+        var cancellationToken = sourceProductionContext.CancellationToken;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (typeModel.Members.IsDefaultOrEmpty)
         {
             return;
@@ -405,6 +433,8 @@ internal static class Helpers
 
         for (var i = 0; i < typeModel.Members.Length; ++i)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var member = typeModel.Members[i];
             var opticType = GetOpticType(typeModel, member, kind);
 
@@ -443,6 +473,10 @@ internal static class Helpers
         AttributeGenerationModel generationModel
     )
     {
+        var cancellationToken = sourceProductionContext.CancellationToken;
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         var typeModel = generationModel.TargetType;
 
         if (typeModel.Members.IsDefaultOrEmpty)
@@ -466,6 +500,8 @@ internal static class Helpers
         // begin containing types
         foreach (var typeDeclaration in generationModel.TypeDeclarations)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             stringBuilder.AppendLine($"{depthSpacerText}{typeDeclaration}");
             stringBuilder.AppendLine($"{depthSpacerText}{{");
 
@@ -475,6 +511,8 @@ internal static class Helpers
         // write members
         for (var i = 0; i < typeModel.Members.Length; ++i)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             var member = typeModel.Members[i];
             var opticType = GetOpticType(typeModel, member, generationModel.Kind);
 
@@ -496,6 +534,8 @@ internal static class Helpers
         // end containing types
         for (var i = 0; i < generationModel.TypeDeclarations.Length; ++i)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             depthSpacerText = depthSpacerText[..^Indent.Length];
             stringBuilder.AppendLine($"{depthSpacerText}}}");
         }
@@ -623,14 +663,23 @@ internal static class Helpers
         #endregion
     }
 
-    private static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)
+    private static TypeGenerationModel CreateTypeGenerationModel(
+        INamedTypeSymbol typeSymbol,
+        CancellationToken cancellationToken
+    )
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var builder = ImmutableArray.CreateBuilder<MemberGenerationModel>();
 
         for (var current = typeSymbol; current != null; current = current.BaseType)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             foreach (var member in current.GetMembers())
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 if (!IsValidMember(member))
                 {
                     continue;

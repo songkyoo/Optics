@@ -48,60 +48,26 @@ public class LensOfGenerator : IIncrementalGenerator
             var attributeContextProvider = analysisResultProvider
                 .Where(static result => result is AnalysisResult<AttributeContext>.Success)
                 .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Success)result).Context);
+            var generationModelProvider = attributeContextProvider
+                .Select(static (attributeContext, _) => CreateAttributeGenerationModel(attributeContext))
+                .WithComparer(AttributeGenerationModelComparer.Instance);
             var diagnosticProvider = analysisResultProvider
                 .Where(static result => result is AnalysisResult<AttributeContext>.Failure)
                 .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Failure)result).Diagnostic);
 
             context.RegisterSourceOutput(
                 source: diagnosticProvider,
-                action: static (sourceProductionContext, diagnostic) =>
-                    sourceProductionContext.ReportDiagnostic(diagnostic)
-            );
-            context.RegisterSourceOutput(
-                source: attributeContextProvider,
-                action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
-                    sourceProductionContext,
-                    attributeContext
+                action: static (sourceProductionContext, diagnostic) => sourceProductionContext.ReportDiagnostic(
+                    diagnostic
                 )
             );
-        }
-
-        static void GenerateAttributeSource(
-            SourceProductionContext sourceProductionContext,
-            AttributeContext attributeContext
-        )
-        {
-            switch (attributeContext)
-            {
-                case LensOfAttributeContext
-                {
-                    ContainingTypeSymbol: { } containingTypeSymbol,
-                    TypeSymbol: { } typeSymbol
-                }:
-                {
-                    AddSource(
-                        sourceProductionContext: sourceProductionContext,
-                        attributeContext: (containingTypeSymbol, typeSymbol),
-                        generateMembers: GenerateLensOfMembers
-                    );
-
-                    break;
-                }
-                case OptionalOfAttributeContext
-                {
-                    ContainingTypeSymbol: { } containingTypeSymbol,
-                    TypeSymbol: { } typeSymbol
-                }:
-                {
-                    AddSource(
-                        sourceProductionContext: sourceProductionContext,
-                        attributeContext: (containingTypeSymbol, typeSymbol),
-                        generateMembers: GenerateOptionalOfMembers
-                    );
-
-                    break;
-                }
-            }
+            context.RegisterSourceOutput(
+                source: generationModelProvider,
+                action: static (sourceProductionContext, generationModel) => AddSource(
+                    sourceProductionContext,
+                    generationModel
+                )
+            );
         }
         #endregion
     }

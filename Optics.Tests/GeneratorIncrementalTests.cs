@@ -1,0 +1,231 @@
+using System.Collections.Immutable;
+using System.Reflection;
+using Macaron.Optics.Generator;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
+
+namespace Macaron.Optics.Tests;
+
+[TestFixture]
+public class GeneratorIncrementalTests
+{
+    [Test]
+    public void LensGenerator_When_UnrelatedInvocationIsAdded_Should_CacheOutput()
+    {
+        const string sourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name);
+
+            public static class Usage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Person>();
+                }
+            }
+            """;
+        const string unrelatedSourceCode =
+            """
+
+            public static class Unrelated
+            {
+                public static void Call()
+                {
+                    _ = new object().ToString();
+                }
+            }
+            """;
+
+        var result = RunAfterAppendingSource<LensGenerator>(
+            sourceCode,
+            unrelatedSourceCode,
+            typeof(LensOf<>).Assembly
+        );
+
+        AssertOutputWasCached(result);
+    }
+
+    [Test]
+    public void LensGenerator_When_DuplicateRequestIsAdded_Should_CacheOutput()
+    {
+        const string sourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name);
+
+            public static class Usage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Person>();
+                }
+            }
+            """;
+        const string duplicateRequestSourceCode =
+            """
+
+            public static class AnotherUsage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Person>();
+                }
+            }
+            """;
+
+        var result = RunAfterAppendingSource<LensGenerator>(
+            sourceCode,
+            duplicateRequestSourceCode,
+            typeof(LensOf<>).Assembly
+        );
+
+        AssertOutputWasCached(result);
+    }
+
+    [Test]
+    public void LensGenerator_When_TargetMemberIsAdded_Should_RegenerateOutput()
+    {
+        const string sourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name);
+
+            public static class Usage
+            {
+                public static void Use()
+                {
+                    _ = Lens.Of<Person>();
+                }
+            }
+            """;
+        const string addedMemberSourceCode =
+            """
+
+            public partial record Person
+            {
+                public int Age { get; init; }
+            }
+            """;
+
+        var result = RunAfterAppendingSource<LensGenerator>(
+            sourceCode,
+            addedMemberSourceCode,
+            typeof(LensOf<>).Assembly
+        );
+        var outputReasons = GetOutputReasons(result);
+        var generatedCode = result.GeneratedSources.Single().SourceText.ToString();
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Exception, Is.Null);
+            Assert.That(outputReasons, Has.Some.Not.EqualTo(IncrementalStepRunReason.Cached));
+            Assert.That(generatedCode, Does.Contain(" Age("));
+        });
+    }
+
+    [Test]
+    public void LensOfGenerator_When_UnrelatedClassIsAdded_Should_CacheOutput()
+    {
+        const string sourceCode =
+            """
+            namespace Macaron.Optics.Tests;
+
+            public partial record Person(string Name)
+            {
+                [LensOf]
+                public static partial class Lens;
+            }
+            """;
+        const string unrelatedSourceCode =
+            """
+
+            public class Unrelated;
+            """;
+
+        var result = RunAfterAppendingSource<LensOfGenerator>(
+            sourceCode,
+            unrelatedSourceCode,
+            typeof(LensOf<>).Assembly,
+            typeof(LensOfAttribute).Assembly
+        );
+
+        AssertOutputWasCached(result);
+    }
+
+    private static void AssertOutputWasCached(GeneratorRunResult result)
+    {
+        var outputReasons = GetOutputReasons(result);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(result.Exception, Is.Null);
+            Assert.That(result.GeneratedSources, Is.Not.Empty);
+            Assert.That(outputReasons, Is.Not.Empty);
+            Assert.That(
+                outputReasons,
+                Is.All.EqualTo(IncrementalStepRunReason.Cached),
+                $"Expected cached generator output, but observed: {string.Join(", ", outputReasons)}"
+            );
+        });
+    }
+
+    private static ImmutableArray<IncrementalStepRunReason> GetOutputReasons(GeneratorRunResult result)
+    {
+        return result
+            .TrackedOutputSteps
+            .SelectMany(static pair => pair.Value)
+            .SelectMany(static step => step.Outputs)
+            .Select(static output => output.Reason)
+            .ToImmutableArray();
+    }
+
+    private static GeneratorRunResult RunAfterAppendingSource<TGenerator>(
+        string sourceCode,
+        string appendedSourceCode,
+        params Assembly[] additionalAssemblies
+    ) where TGenerator : IIncrementalGenerator, new()
+    {
+        var references = AppDomain
+            .CurrentDomain
+            .GetAssemblies()
+            .Concat(additionalAssemblies)
+            .Where(static assembly => !assembly.IsDynamic && !string.IsNullOrWhiteSpace(assembly.Location))
+            .Select(static assembly => MetadataReference.CreateFromFile(assembly.Location))
+            .Cast<MetadataReference>()
+            .ToImmutableArray();
+        var syntaxTree = CSharpSyntaxTree.ParseText(sourceCode);
+        var compilation = CSharpCompilation.Create(
+            assemblyName: "Macaron.Optics.IncrementalTests",
+            syntaxTrees: [syntaxTree],
+            references: references,
+            options: new CSharpCompilationOptions(
+                outputKind: OutputKind.DynamicallyLinkedLibrary,
+                nullableContextOptions: NullableContextOptions.Enable
+            )
+        );
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [new TGenerator().AsSourceGenerator()],
+            additionalTexts: [],
+            parseOptions: null,
+            optionsProvider: null,
+            driverOptions: new GeneratorDriverOptions(
+                disabledOutputs: IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true
+            )
+        );
+
+        driver = driver.RunGenerators(compilation);
+
+        var updatedSyntaxTree = syntaxTree.WithChangedText(SourceText.From(sourceCode + appendedSourceCode));
+        var updatedCompilation = compilation.ReplaceSyntaxTree(syntaxTree, updatedSyntaxTree);
+
+        driver = driver.RunGenerators(updatedCompilation);
+
+        return driver.GetRunResult().Results.Single();
+    }
+}

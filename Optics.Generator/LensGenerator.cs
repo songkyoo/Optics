@@ -1,4 +1,3 @@
-﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 
 using static Macaron.Optics.Generator.Helpers;
@@ -21,8 +20,11 @@ public class LensGenerator : IIncrementalGenerator
             .Select(static (result, _) => result!);
         var typeContextProvider = analysisResultProvider
             .Where(static result => result is AnalysisResult<TypeContext>.Success)
-            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context)
-            .Collect();
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context);
+        var generationModelProvider = typeContextProvider
+            .Collect()
+            .Select(static (typeContexts, _) => CreateOfGenerationModel(typeContexts))
+            .WithComparer(OfGenerationModelComparer.Instance);
         var diagnosticProvider = analysisResultProvider
             .Where(static result => result is AnalysisResult<TypeContext>.Failure)
             .Select(static (result, _) => ((AnalysisResult<TypeContext>.Failure)result).Diagnostic);
@@ -32,78 +34,24 @@ public class LensGenerator : IIncrementalGenerator
             action: static (sourceProductionContext, diagnostic) =>
                 sourceProductionContext.ReportDiagnostic(diagnostic)
         );
-
         context.RegisterSourceOutput(
-            source: typeContextProvider,
-            action: (sourceProductionContext, typeContexts) =>
+            source: generationModelProvider,
+            action: static (sourceProductionContext, generationModel) =>
             {
-                var lensOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
-                var optionalOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
-                var lensOfTypeSymbols = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-                var optionalOfTypeSymbols = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
-
-                foreach (var typeContext in typeContexts)
-                {
-                    switch (typeContext)
-                    {
-                        case LensOfTypeContext { Symbol: { } symbol } when lensOfTypeSymbols.Add(symbol):
-                        {
-                            lensOfTypeSymbolsBuilder.Add(symbol);
-
-                            break;
-                        }
-                        case OptionalOfTypeContext { Symbol: { } symbol } when optionalOfTypeSymbols.Add(symbol):
-                        {
-                            optionalOfTypeSymbolsBuilder.Add(symbol);
-
-                            break;
-                        }
-                    }
-                }
-
-                var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(SymbolEqualityComparer.Default);
-                var lensOfTypeModels = GetTypeModels(lensOfTypeSymbolsBuilder, typeModels);
-                var optionalOfTypeModels = GetTypeModels(optionalOfTypeSymbolsBuilder, typeModels);
-
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "LensOf",
-                    typeModels: lensOfTypeModels,
+                    typeModels: generationModel.LensTypes,
                     generateMembers: GenerateLensOfMembers
                 );
                 AddSource(
                     sourceProductionContext: sourceProductionContext,
                     lensOfTypeName: "OptionalOf",
-                    typeModels: optionalOfTypeModels,
+                    typeModels: generationModel.OptionalTypes,
                     generateMembers: GenerateOptionalOfMembers
                 );
-
-                #region Local Functions
-                static ImmutableArray<TypeGenerationModel> GetTypeModels(
-                    ImmutableArray<INamedTypeSymbol>.Builder typeSymbols,
-                    Dictionary<INamedTypeSymbol, TypeGenerationModel> typeModels
-                )
-                {
-                    var builder = ImmutableArray.CreateBuilder<TypeGenerationModel>(typeSymbols.Count);
-
-                    foreach (var typeSymbol in typeSymbols)
-                    {
-                        if (!typeModels.TryGetValue(typeSymbol, out var typeModel))
-                        {
-                            typeModel = CreateTypeGenerationModel(typeSymbol);
-                            typeModels.Add(typeSymbol, typeModel);
-                        }
-
-                        if (!typeModel.Members.IsEmpty)
-                        {
-                            builder.Add(typeModel);
-                        }
-                    }
-
-                    return builder.ToImmutable();
-                }
-                #endregion
-            });
+            }
+        );
     }
     #endregion
 }

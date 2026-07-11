@@ -52,16 +52,6 @@ internal static class Helpers
         INamedTypeSymbol Symbol
     ) : TypeContext;
 
-    public sealed record TypeGenerationModel(
-        string TypeName,
-        ImmutableArray<MemberGenerationModel> Members
-    );
-
-    public readonly record struct MemberGenerationModel(
-        string Name,
-        string TypeName,
-        bool IsNullable
-    );
     #endregion
 
     #region Diagnostics
@@ -315,11 +305,6 @@ internal static class Helpers
         return new AnalysisResult<AttributeContext>.Success(attributeContext);
     }
 
-    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)
-    {
-        return GenerateLensOfMembers(CreateTypeGenerationModel(typeSymbol));
-    }
-
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(
         TypeGenerationModel typeModel
     )
@@ -359,13 +344,6 @@ internal static class Helpers
                 return (memberDeclaration, lines.ToImmutableArray());
             }
         );
-    }
-
-    public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(
-        INamedTypeSymbol typeSymbol
-    )
-    {
-        return GenerateOptionalOfMembers(CreateTypeGenerationModel(typeSymbol));
     }
 
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateOptionalOfMembers(
@@ -413,6 +391,149 @@ internal static class Helpers
                 return (memberDeclaration, lines);
             }
         );
+    }
+
+    public static OfGenerationModel CreateOfGenerationModel(ImmutableArray<TypeContext> typeContexts)
+    {
+        var lensTypeSymbols = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+        var optionalTypeSymbols = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
+        var visitedLensTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+        var visitedOptionalTypes = new HashSet<INamedTypeSymbol>(SymbolEqualityComparer.Default);
+
+        foreach (var typeContext in typeContexts)
+        {
+            switch (typeContext)
+            {
+                case LensOfTypeContext { Symbol: { } symbol } when visitedLensTypes.Add(symbol):
+                    lensTypeSymbols.Add(symbol);
+                    break;
+                case OptionalOfTypeContext { Symbol: { } symbol } when visitedOptionalTypes.Add(symbol):
+                    optionalTypeSymbols.Add(symbol);
+                    break;
+            }
+        }
+
+        var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(
+            SymbolEqualityComparer.Default
+        );
+
+        return new OfGenerationModel(
+            LensTypes: GetTypeModels(lensTypeSymbols, typeModels),
+            OptionalTypes: GetTypeModels(optionalTypeSymbols, typeModels)
+        );
+
+        #region Local Functions
+        static ImmutableArray<TypeGenerationModel> GetTypeModels(
+            ImmutableArray<INamedTypeSymbol>.Builder typeSymbols,
+            Dictionary<INamedTypeSymbol, TypeGenerationModel> typeModels
+        )
+        {
+            var builder = ImmutableArray.CreateBuilder<TypeGenerationModel>(typeSymbols.Count);
+
+            foreach (var typeSymbol in typeSymbols)
+            {
+                if (!typeModels.TryGetValue(typeSymbol, out var typeModel))
+                {
+                    typeModel = CreateTypeGenerationModel(typeSymbol);
+                    typeModels.Add(typeSymbol, typeModel);
+                }
+
+                if (!typeModel.Members.IsEmpty)
+                {
+                    builder.Add(typeModel);
+                }
+            }
+
+            return builder.ToImmutable();
+        }
+        #endregion
+    }
+
+    public static AttributeGenerationModel CreateAttributeGenerationModel(AttributeContext attributeContext)
+    {
+        var (kind, containingTypeSymbol, typeSymbol) = attributeContext switch
+        {
+            LensOfAttributeContext context => (
+                OpticsKind.Lens,
+                context.ContainingTypeSymbol,
+                context.TypeSymbol
+            ),
+            OptionalOfAttributeContext context => (
+                OpticsKind.Optional,
+                context.ContainingTypeSymbol,
+                context.TypeSymbol
+            ),
+            _ => throw new InvalidOperationException($"Invalid attribute context: {attributeContext}"),
+        };
+        var containingTypes = new Stack<INamedTypeSymbol>();
+
+        for (var current = containingTypeSymbol; current != null; current = current.ContainingType)
+        {
+            containingTypes.Push(current);
+        }
+
+        var typeDeclarations = ImmutableArray.CreateBuilder<string>(containingTypes.Count);
+
+        foreach (var containingType in containingTypes)
+        {
+            typeDeclarations.Add(GetPartialTypeDeclarationString(containingType));
+        }
+
+        return new AttributeGenerationModel(
+            Kind: kind,
+            NamespaceName: containingTypeSymbol.ContainingNamespace.IsGlobalNamespace
+                ? null
+                : containingTypeSymbol.ContainingNamespace.ToDisplayString(),
+            TypeDeclarations: typeDeclarations.MoveToImmutable(),
+            HintName: GetHintName(containingTypeSymbol),
+            TargetType: CreateTypeGenerationModel(typeSymbol)
+        );
+
+        #region Local Functions
+        static string GetPartialTypeDeclarationString(INamedTypeSymbol typeSymbol)
+        {
+            var typeKindString = GetTypeKindString(typeSymbol);
+            var typeNameString = typeSymbol.ToDisplayString(MinimallyQualifiedFormat);
+
+            return $"partial {typeKindString} {typeNameString}";
+        }
+
+        static string GetTypeKindString(INamedTypeSymbol typeSymbol)
+        {
+            if (typeSymbol.IsRecord)
+            {
+                return typeSymbol.TypeKind is TypeKind.Struct ? "record struct" : "record";
+            }
+
+            return typeSymbol.TypeKind switch
+            {
+                TypeKind.Class => "class",
+                TypeKind.Struct => "struct",
+                TypeKind.Interface => "interface",
+                _ => throw new InvalidOperationException($"Invalid type kind: {typeSymbol.TypeKind}")
+            };
+        }
+
+        static string GetHintName(INamedTypeSymbol typeSymbol)
+        {
+            var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
+            var qualifiedName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
+
+            const uint fnvPrime = 16777619;
+            const uint offsetBasis = 2166136261;
+
+            var bytes = Encoding.UTF8.GetBytes($"{assemblyName}, {qualifiedName}");
+            var hash = offsetBasis;
+
+            foreach (var b in bytes)
+            {
+                hash ^= b;
+                hash *= fnvPrime;
+            }
+
+            return $"{typeSymbol.Name}_{typeSymbol.Arity}.{hash:x8}.g.cs";
+        }
+        #endregion
     }
 
     public static void AddSource(
@@ -487,12 +608,15 @@ internal static class Helpers
 
     public static void AddSource(
         SourceProductionContext sourceProductionContext,
-        (INamedTypeSymbol ContainingTypeSymbol, INamedTypeSymbol TypeSymbol) attributeContext,
-        Func<INamedTypeSymbol, ImmutableArray<(string, ImmutableArray<string>)>> generateMembers
+        AttributeGenerationModel generationModel
     )
     {
-        var (containingTypeSymbol, typeSymbol) = attributeContext;
-        var members = generateMembers(typeSymbol);
+        var members = generationModel.Kind switch
+        {
+            OpticsKind.Lens => GenerateLensOfMembers(generationModel.TargetType),
+            OpticsKind.Optional => GenerateOptionalOfMembers(generationModel.TargetType),
+            _ => throw new InvalidOperationException($"Invalid optics kind: {generationModel.Kind}"),
+        };
 
         if (members.IsDefaultOrEmpty)
         {
@@ -502,44 +626,26 @@ internal static class Helpers
         var stringBuilder = CreateStringBuilderWithFileHeader();
 
         // begin namespace
-        var hasNamespace = !containingTypeSymbol.ContainingNamespace.IsGlobalNamespace;
+        var hasNamespace = generationModel.NamespaceName is not null;
 
         if (hasNamespace)
         {
-            stringBuilder.AppendLine($"namespace {containingTypeSymbol.ContainingNamespace.ToDisplayString()}");
+            stringBuilder.AppendLine($"namespace {generationModel.NamespaceName}");
             stringBuilder.AppendLine($"{{");
-        }
-
-        // get nestedTypes
-        var nestedTypes = new List<INamedTypeSymbol>();
-        var parentType = containingTypeSymbol.ContainingType;
-
-        while (parentType != null)
-        {
-            nestedTypes.Add(parentType);
-            parentType = parentType.ContainingType;
         }
 
         var depthSpacerText = hasNamespace ? "    " : "";
 
-        // begin nestedTypes
-        for (var i = nestedTypes.Count - 1; i >= 0; --i)
+        // begin containing types
+        foreach (var typeDeclaration in generationModel.TypeDeclarations)
         {
-            var nestedType = nestedTypes[i];
-
-            stringBuilder.AppendLine($"{depthSpacerText}{GetPartialTypeDeclarationString(nestedType)}");
+            stringBuilder.AppendLine($"{depthSpacerText}{typeDeclaration}");
             stringBuilder.AppendLine($"{depthSpacerText}{{");
 
             depthSpacerText += "    ";
         }
 
-        // begin containingType
-        stringBuilder.AppendLine($"{depthSpacerText}{GetPartialTypeDeclarationString(containingTypeSymbol)}");
-        stringBuilder.AppendLine($"{depthSpacerText}{{");
-
         // write members
-        depthSpacerText += "    ";
-
         for (var i = 0; i < members.Length; ++i)
         {
             var (memberDeclaration, lines) = members[i];
@@ -556,16 +662,10 @@ internal static class Helpers
             }
         }
 
-        depthSpacerText = depthSpacerText[..^4];
-
-        // end containingType
-        stringBuilder.AppendLine($"{depthSpacerText}}}");
-
-        // end nestedTypes
-        for (var i = 0; i < nestedTypes.Count; ++i)
+        // end containing types
+        for (var i = 0; i < generationModel.TypeDeclarations.Length; ++i)
         {
             depthSpacerText = depthSpacerText[..^4];
-
             stringBuilder.AppendLine($"{depthSpacerText}}}");
         }
 
@@ -576,55 +676,9 @@ internal static class Helpers
         }
 
         sourceProductionContext.AddSource(
-            hintName: GetHintName(containingTypeSymbol),
+            hintName: generationModel.HintName,
             sourceText: SourceText.From(stringBuilder.ToString(), Encoding.UTF8)
         );
-
-        #region Local Functions
-        static string GetPartialTypeDeclarationString(INamedTypeSymbol typeSymbol)
-        {
-            var typeKindString = GetTypeKindString(typeSymbol);
-            var typeNameString = typeSymbol.ToDisplayString(MinimallyQualifiedFormat);
-
-            return $"partial {typeKindString} {typeNameString}";
-        }
-
-        static string GetTypeKindString(INamedTypeSymbol typeSymbol)
-        {
-            if (typeSymbol.IsRecord)
-            {
-                return typeSymbol.TypeKind is TypeKind.Struct ? "record struct" : "record";
-            }
-
-            return typeSymbol.TypeKind switch
-            {
-                TypeKind.Class => "class",
-                TypeKind.Struct => "struct",
-                TypeKind.Interface => "interface",
-                _ => throw new InvalidOperationException($"Invalid type kind: {typeSymbol.TypeKind}")
-            };
-        }
-
-        static string GetHintName(INamedTypeSymbol typeSymbol)
-        {
-            var assemblyName = typeSymbol.ContainingAssembly != null ? $"{typeSymbol.ContainingAssembly}," : "";
-            var qualifiedName = typeSymbol.ToDisplayString(FullyQualifiedFormat);
-
-            const uint fnvPrime = 16777619;
-            const uint offsetBasis = 2166136261;
-
-            var bytes = Encoding.UTF8.GetBytes($"{assemblyName}, {qualifiedName}");
-            var hash = offsetBasis;
-
-            foreach (var b in bytes)
-            {
-                hash ^= b;
-                hash *= fnvPrime;
-            }
-
-            return $"{typeSymbol.Name}_{typeSymbol.Arity}.{hash:x8}.g.cs";
-        }
-        #endregion
     }
 
     public static TypeGenerationModel CreateTypeGenerationModel(INamedTypeSymbol typeSymbol)

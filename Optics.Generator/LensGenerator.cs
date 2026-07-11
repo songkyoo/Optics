@@ -11,17 +11,30 @@ public class LensGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var valueProvider = context
+        var analysisResultProvider = context
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => IsOfInvocationCandidate(syntaxNode),
                 transform: static (generatorSyntaxContext, _) => GetTypeContext(generatorSyntaxContext)
             )
-            .Where(static typeContext => !ReferenceEquals(typeContext, TypeContext.Empty))
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+        var typeContextProvider = analysisResultProvider
+            .Where(static result => result is AnalysisResult<TypeContext>.Success)
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context)
             .Collect();
+        var diagnosticProvider = analysisResultProvider
+            .Where(static result => result is AnalysisResult<TypeContext>.Failure)
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Failure)result).Diagnostic);
 
         context.RegisterSourceOutput(
-            source: valueProvider,
+            source: diagnosticProvider,
+            action: static (sourceProductionContext, diagnostic) =>
+                sourceProductionContext.ReportDiagnostic(diagnostic)
+        );
+
+        context.RegisterSourceOutput(
+            source: typeContextProvider,
             action: (sourceProductionContext, typeContexts) =>
             {
                 var lensOfTypeSymbolsBuilder = ImmutableArray.CreateBuilder<INamedTypeSymbol>();
@@ -31,25 +44,24 @@ public class LensGenerator : IIncrementalGenerator
 
                 foreach (var typeContext in typeContexts)
                 {
-                    foreach (var diagnostic in typeContext.Diagnostics)
-                    {
-                        sourceProductionContext.ReportDiagnostic(diagnostic);
-                    }
-
                     switch (typeContext)
                     {
                         case LensOfTypeContext { Symbol: { } symbol } when lensOfTypeSymbols.Add(symbol):
+                        {
                             lensOfTypeSymbolsBuilder.Add(symbol);
+
                             break;
+                        }
                         case OptionalOfTypeContext { Symbol: { } symbol } when optionalOfTypeSymbols.Add(symbol):
+                        {
                             optionalOfTypeSymbolsBuilder.Add(symbol);
+
                             break;
+                        }
                     }
                 }
 
-                var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(
-                    SymbolEqualityComparer.Default
-                );
+                var typeModels = new Dictionary<INamedTypeSymbol, TypeGenerationModel>(SymbolEqualityComparer.Default);
                 var lensOfTypeModels = GetTypeModels(lensOfTypeSymbolsBuilder, typeModels);
                 var optionalOfTypeModels = GetTypeModels(optionalOfTypeSymbolsBuilder, typeModels);
 

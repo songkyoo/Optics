@@ -14,57 +14,43 @@ namespace Macaron.Optics.Generator;
 internal static class Helpers
 {
     #region Constants
-    private const string LensOfTypeString = "global::Macaron.Optics.Lens";
-    private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
     public const string LensOfAttributeName = "Macaron.Optics.LensOfAttribute";
     public const string OptionalOfAttributeName = "Macaron.Optics.OptionalOfAttribute";
+
+    private const string LensOfTypeString = "global::Macaron.Optics.Lens";
+    private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
     #endregion
 
     #region Types
-    public record AttributeContext(
-        ImmutableArray<Diagnostic> Diagnostics
-    )
+    public abstract record AnalysisResult<TContext>
     {
-        #region Static
-        public static readonly AttributeContext Empty = new(
-            Diagnostics: ImmutableArray<Diagnostic>.Empty
-        );
-        #endregion
+        public sealed record Success(TContext Context) : AnalysisResult<TContext>;
+
+        public sealed record Failure(Diagnostic Diagnostic) : AnalysisResult<TContext>;
     }
+
+    public abstract record AttributeContext;
 
     public sealed record LensOfAttributeContext(
         INamedTypeSymbol ContainingTypeSymbol,
-        INamedTypeSymbol TypeSymbol,
-        ImmutableArray<Diagnostic> Diagnostics
-    ) : AttributeContext(Diagnostics);
+        INamedTypeSymbol TypeSymbol
+    ) : AttributeContext;
 
     public sealed record OptionalOfAttributeContext(
         INamedTypeSymbol ContainingTypeSymbol,
-        INamedTypeSymbol TypeSymbol,
-        ImmutableArray<Diagnostic> Diagnostics
-    ) : AttributeContext(Diagnostics);
+        INamedTypeSymbol TypeSymbol
+    ) : AttributeContext;
 
-    public record TypeContext(
-        ImmutableArray<Diagnostic> Diagnostics
-    )
-    {
-        #region Static
-        public static readonly TypeContext Empty = new(
-            Diagnostics: ImmutableArray<Diagnostic>.Empty
-        );
-        #endregion
-    }
+    public abstract record TypeContext;
 
     public sealed record LensOfTypeContext(
-        INamedTypeSymbol Symbol,
-        ImmutableArray<Diagnostic> Diagnostics
-    ) : TypeContext(Diagnostics);
+        INamedTypeSymbol Symbol
+    ) : TypeContext;
 
     public sealed record OptionalOfTypeContext(
-        INamedTypeSymbol Symbol,
-        ImmutableArray<Diagnostic> Diagnostics
-    ) : TypeContext(Diagnostics);
+        INamedTypeSymbol Symbol
+    ) : TypeContext;
 
     public sealed record TypeGenerationModel(
         string TypeName,
@@ -148,7 +134,7 @@ internal static class Helpers
         };
     }
 
-    public static TypeContext GetTypeContext(GeneratorSyntaxContext generatorSyntaxContext)
+    public static AnalysisResult<TypeContext>? GetTypeContext(GeneratorSyntaxContext generatorSyntaxContext)
     {
         var expressionSyntax = (InvocationExpressionSyntax)generatorSyntaxContext.Node;
         var genericNameSyntax = GetGenericNameFromInvocation(expressionSyntax);
@@ -162,7 +148,7 @@ internal static class Helpers
             } methodSymbol
         )
         {
-            return TypeContext.Empty;
+            return null;
         }
 
         var typeArgumentList = genericNameSyntax.TypeArgumentList;
@@ -172,7 +158,7 @@ internal static class Helpers
             || typeArgumentSymbol is not INamedTypeSymbol typeSymbol
         )
         {
-            return TypeContext.Empty;
+            return null;
         }
 
         const int lensOfType = 1;
@@ -203,7 +189,7 @@ internal static class Helpers
 
         if (type == 0)
         {
-            return TypeContext.Empty;
+            return null;
         }
 
         // Nullable한 형식은 지원하지 않는다.
@@ -211,41 +197,35 @@ internal static class Helpers
             typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
         )
         {
-            return TypeContext.Empty with
-            {
-                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+            return new AnalysisResult<TypeContext>.Failure(
+                Diagnostic.Create(
                     descriptor: OpticsTargetTypeCannotBeNullableRule,
                     location: typeArgument.GetLocation(),
                     messageArgs: [typeArgument]
-                )),
-            };
+                )
+            );
         }
 
         // with 문을 지원하는 형식만 사용한다.
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return TypeContext.Empty with
-            {
-                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+            return new AnalysisResult<TypeContext>.Failure(
+                Diagnostic.Create(
                     descriptor: OpticsTargetTypeMustSupportWithExpressionRule,
                     location: typeArgument.GetLocation(),
                     messageArgs: [typeArgument]
-                )),
-            };
+                )
+            );
         }
 
-        return type switch
+        var typeContext = type switch
         {
-            lensOfType => new LensOfTypeContext(
-                Symbol: typeSymbol,
-                Diagnostics: ImmutableArray<Diagnostic>.Empty
-            ),
-            optionalOfType => new OptionalOfTypeContext(
-                Symbol: typeSymbol,
-                Diagnostics: ImmutableArray<Diagnostic>.Empty
-            ),
+            lensOfType => (TypeContext)new LensOfTypeContext(Symbol: typeSymbol),
+            optionalOfType => new OptionalOfTypeContext(Symbol: typeSymbol),
             _ => throw new InvalidOperationException($"Invalid type: {type}"),
         };
+
+        return new AnalysisResult<TypeContext>.Success(typeContext);
 
         #region Local Functions
         static GenericNameSyntax GetGenericNameFromInvocation(
@@ -262,14 +242,14 @@ internal static class Helpers
         #endregion
     }
 
-    public static AttributeContext GetAttributeContext(
+    public static AnalysisResult<AttributeContext>? GetAttributeContext(
         GeneratorAttributeSyntaxContext context,
         CancellationToken cancellationToken
     )
     {
         if (context.TargetSymbol is not INamedTypeSymbol containingTypeSymbol)
         {
-            return AttributeContext.Empty;
+            return null;
         }
 
         var attribute = context.Attributes[0];
@@ -279,19 +259,18 @@ internal static class Helpers
 
         if (!containingTypeSymbol.IsStatic)
         {
-            return AttributeContext.Empty with
-            {
-                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+            return new AnalysisResult<AttributeContext>.Failure(
+                Diagnostic.Create(
                     descriptor: OpticsAttributeMustBeOnStaticClassRule,
                     location,
                     messageArgs: [containingTypeSymbol]
-                )),
-            };
+                )
+            );
         }
 
         if (attribute.ConstructorArguments is [{ Value: IErrorTypeSymbol }])
         {
-            return AttributeContext.Empty;
+            return null;
         }
 
         var typeSymbol = attribute.ConstructorArguments is [{ Value: INamedTypeSymbol symbolArgument }]
@@ -300,42 +279,40 @@ internal static class Helpers
 
         if (typeSymbol is null)
         {
-            return AttributeContext.Empty with
-            {
-                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+            return new AnalysisResult<AttributeContext>.Failure(
+                Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
                     location,
                     messageArgs: [containingTypeSymbol]
-                )),
-            };
+                )
+            );
         }
 
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return AttributeContext.Empty with
-            {
-                Diagnostics = ImmutableArray.Create(Diagnostic.Create(
+            return new AnalysisResult<AttributeContext>.Failure(
+                Diagnostic.Create(
                     descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
                     location,
                     messageArgs: [typeSymbol]
-                )),
-            };
+                )
+            );
         }
 
-        return attribute.AttributeClass?.ToDisplayString() switch
+        var attributeContext = attribute.AttributeClass?.ToDisplayString() switch
         {
-            LensOfAttributeName => new LensOfAttributeContext(
+            LensOfAttributeName => (AttributeContext)new LensOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
-                TypeSymbol: typeSymbol,
-                Diagnostics: ImmutableArray<Diagnostic>.Empty
+                TypeSymbol: typeSymbol
             ),
             OptionalOfAttributeName => new OptionalOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
-                TypeSymbol: typeSymbol,
-                Diagnostics: ImmutableArray<Diagnostic>.Empty
+                TypeSymbol: typeSymbol
             ),
             _ => throw new InvalidOperationException($"Invalid type: {attribute.AttributeClass}"),
         };
+
+        return new AnalysisResult<AttributeContext>.Success(attributeContext);
     }
 
     public static ImmutableArray<(string, ImmutableArray<string>)> GenerateLensOfMembers(INamedTypeSymbol typeSymbol)

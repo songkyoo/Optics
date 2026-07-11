@@ -11,7 +11,7 @@ public class LensOfGenerator : IIncrementalGenerator
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        var lensOfAttributeContexts = context
+        var lensOfAnalysisResults = context
             .SyntaxProvider
             .ForAttributeWithMetadataName(
                 fullyQualifiedMetadataName: LensOfAttributeName,
@@ -21,8 +21,9 @@ public class LensOfGenerator : IIncrementalGenerator
                     cancellationToken
                 )
             )
-            .Where(static attributeContext => !ReferenceEquals(attributeContext, AttributeContext.Empty));
-        var optionalOfAttributeContexts = context
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
+        var optionalOfAnalysisResults = context
             .SyntaxProvider
             .ForAttributeWithMetadataName(
                 fullyQualifiedMetadataName: OptionalOfAttributeName,
@@ -32,34 +33,44 @@ public class LensOfGenerator : IIncrementalGenerator
                     cancellationToken
                 )
             )
-            .Where(static attributeContext => !ReferenceEquals(attributeContext, AttributeContext.Empty));
+            .Where(static result => result is not null)
+            .Select(static (result, _) => result!);
 
-        context.RegisterSourceOutput(
-            source: lensOfAttributeContexts,
-            action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
-                sourceProductionContext,
-                attributeContext
-            )
-        );
-        context.RegisterSourceOutput(
-            source: optionalOfAttributeContexts,
-            action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
-                sourceProductionContext,
-                attributeContext
-            )
-        );
+        RegisterAnalysisResultOutputs(context, lensOfAnalysisResults);
+        RegisterAnalysisResultOutputs(context, optionalOfAnalysisResults);
 
         #region Local Functions
+        static void RegisterAnalysisResultOutputs(
+            IncrementalGeneratorInitializationContext context,
+            IncrementalValuesProvider<AnalysisResult<AttributeContext>> analysisResultProvider
+        )
+        {
+            var attributeContextProvider = analysisResultProvider
+                .Where(static result => result is AnalysisResult<AttributeContext>.Success)
+                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Success)result).Context);
+            var diagnosticProvider = analysisResultProvider
+                .Where(static result => result is AnalysisResult<AttributeContext>.Failure)
+                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Failure)result).Diagnostic);
+
+            context.RegisterSourceOutput(
+                source: diagnosticProvider,
+                action: static (sourceProductionContext, diagnostic) =>
+                    sourceProductionContext.ReportDiagnostic(diagnostic)
+            );
+            context.RegisterSourceOutput(
+                source: attributeContextProvider,
+                action: static (sourceProductionContext, attributeContext) => GenerateAttributeSource(
+                    sourceProductionContext,
+                    attributeContext
+                )
+            );
+        }
+
         static void GenerateAttributeSource(
             SourceProductionContext sourceProductionContext,
             AttributeContext attributeContext
         )
         {
-            foreach (var diagnostic in attributeContext.Diagnostics)
-            {
-                sourceProductionContext.ReportDiagnostic(diagnostic);
-            }
-
             switch (attributeContext)
             {
                 case LensOfAttributeContext

@@ -173,6 +173,11 @@ internal static class Helpers
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        if (context.Attributes.Length != 1)
+        {
+            return null;
+        }
+
         if (context.TargetSymbol is not INamedTypeSymbol containingTypeSymbol)
         {
             return null;

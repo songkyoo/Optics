@@ -1,3 +1,8 @@
+using Microsoft.CodeAnalysis;
+
 namespace Macaron.Optics.Generator;
 
-internal abstract record TypeContext;
+internal sealed record TypeContext(
+    OpticsKind Kind,
+    INamedTypeSymbol Symbol
+);

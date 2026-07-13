@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-using static Macaron.Optics.Generator.Helpers;
+using static Macaron.Optics.Generator.SourceGenerationHelper;
 using static Macaron.Optics.Generator.OpticsKind;
 
 namespace Macaron.Optics.Generator;
@@ -9,13 +9,18 @@ namespace Macaron.Optics.Generator;
 [Generator(LanguageNames.CSharp)]
 public class LensOfGenerator : IIncrementalGenerator
 {
+    #region Constants
+    private const string LensOfAttributeMetadataName = "Macaron.Optics.LensOfAttribute";
+    private const string OptionalOfAttributeMetadataName = "Macaron.Optics.OptionalOfAttribute";
+    #endregion
+
     #region IIncrementalGenerator Interface
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var lensOfAnalysisResults = context
             .SyntaxProvider
             .ForAttributeWithMetadataName(
-                fullyQualifiedMetadataName: LensOfAttributeName,
+                fullyQualifiedMetadataName: LensOfAttributeMetadataName,
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
                 transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
                     generatorAttributeSyntaxContext,
@@ -28,7 +33,7 @@ public class LensOfGenerator : IIncrementalGenerator
         var optionalOfAnalysisResults = context
             .SyntaxProvider
             .ForAttributeWithMetadataName(
-                fullyQualifiedMetadataName: OptionalOfAttributeName,
+                fullyQualifiedMetadataName: OptionalOfAttributeMetadataName,
                 predicate: static (syntaxNode, _) => syntaxNode is ClassDeclarationSyntax,
                 transform: static (generatorAttributeSyntaxContext, cancellationToken) => GetAttributeContext(
                     generatorAttributeSyntaxContext,
@@ -49,8 +54,8 @@ public class LensOfGenerator : IIncrementalGenerator
         )
         {
             var attributeContextProvider = analysisResultProvider
-                .Where(static result => result is AnalysisSuccess<AttributeContext>)
-                .Select(static (result, _) => ((AnalysisSuccess<AttributeContext>)result).Context);
+                .Where(static result => result is AnalysisResult<AttributeContext>.Success)
+                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Success)result).Context);
             var generationModelProvider = attributeContextProvider
                 .Select(static (attributeContext, cancellationToken) => CreateAttributeGenerationModel(
                     attributeContext,
@@ -58,8 +63,8 @@ public class LensOfGenerator : IIncrementalGenerator
                 ))
                 .WithComparer(AttributeGenerationModelComparer.Instance);
             var diagnosticProvider = analysisResultProvider
-                .Where(static result => result is AnalysisFailure<AttributeContext>)
-                .Select(static (result, _) => ((AnalysisFailure<AttributeContext>)result).Diagnostic);
+                .Where(static result => result is AnalysisResult<AttributeContext>.Failure)
+                .Select(static (result, _) => ((AnalysisResult<AttributeContext>.Failure)result).Diagnostic);
 
             context.RegisterSourceOutput(
                 source: diagnosticProvider,

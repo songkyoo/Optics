@@ -207,7 +207,7 @@ public class GeneratorIncrementalTests
             typeof(LensOf<>).Assembly
         );
         var typeOutputs = result
-            .TrackedSteps["LensTypeGenerationModels"]
+            .TrackedSteps["LensTypeGenerationModel"]
             .SelectMany(static step => step.Outputs)
             .Select(static output => (
                 Model: (TypeGenerationModel)output.Value,

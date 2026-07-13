@@ -9,15 +9,13 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFacts;
 using static Microsoft.CodeAnalysis.SymbolDisplayFormat;
 using static Microsoft.CodeAnalysis.SymbolDisplayMiscellaneousOptions;
 using static Macaron.Optics.Generator.DiagnosticDescriptors;
+using static Macaron.Optics.Generator.OpticsKind;
 
 namespace Macaron.Optics.Generator;
 
-internal static class Helpers
+internal static class SourceGenerationHelper
 {
     #region Constants
-    public const string LensOfAttributeName = "Macaron.Optics.LensOfAttribute";
-    public const string OptionalOfAttributeName = "Macaron.Optics.OptionalOfAttribute";
-
     private const string LensOfTypeString = "global::Macaron.Optics.Lens";
     private const string OptionalOfTypeString = "global::Macaron.Optics.Optional";
     private const string MaybeTypeString = "global::Macaron.Functional.Maybe";
@@ -52,17 +50,16 @@ internal static class Helpers
         };
     }
 
-    public static AnalysisResult<TypeContext>? GetTypeContext(
+    public static AnalysisResult<TypeContext>? GetTypeAnalysisContext(
         GeneratorSyntaxContext generatorSyntaxContext,
         CancellationToken cancellationToken
     )
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         var expressionSyntax = (InvocationExpressionSyntax)generatorSyntaxContext.Node;
         var genericNameSyntax = GetGenericNameFromInvocation(expressionSyntax);
+        var symbol = generatorSyntaxContext.SemanticModel.GetSymbolInfo(expressionSyntax, cancellationToken).Symbol;
 
-        if (generatorSyntaxContext.SemanticModel.GetSymbolInfo(expressionSyntax, cancellationToken).Symbol is not IMethodSymbol
+        if (symbol is not IMethodSymbol
             {
                 IsStatic: true,
                 Name: "Of",
@@ -88,20 +85,20 @@ internal static class Helpers
         const int optionalOfType = 2;
 
         var type = methodSymbol.ContainingType is
-        {
-            Arity: 0,
-            ContainingType: null,
-            ContainingNamespace:
             {
-                Name: "Optics",
+                Arity: 0,
+                ContainingType: null,
                 ContainingNamespace:
                 {
-                    Name: "Macaron",
-                    ContainingNamespace.IsGlobalNamespace: true,
+                    Name: "Optics",
+                    ContainingNamespace:
+                    {
+                        Name: "Macaron",
+                        ContainingNamespace.IsGlobalNamespace: true,
+                    },
                 },
-            },
-            Name: var containingTypeName,
-        }
+                Name: var containingTypeName,
+            }
             ? containingTypeName switch
             {
                 "Lens" => lensOfType,
@@ -116,39 +113,35 @@ internal static class Helpers
         }
 
         // Nullable한 형식은 지원하지 않는다.
-        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated ||
-            typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
+        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
+            || typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
         )
         {
-            return new AnalysisFailure<TypeContext>(
-                Diagnostic.Create(
-                    descriptor: OpticsTargetTypeCannotBeNullableRule,
-                    location: typeArgument.GetLocation(),
-                    messageArgs: [typeArgument]
-                )
-            );
+            return new AnalysisResult<TypeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsTargetTypeCannotBeNullableRule,
+                location: typeArgument.GetLocation(),
+                messageArgs: [typeArgument]
+            ));
         }
 
         // with 문을 지원하는 형식만 사용한다.
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return new AnalysisFailure<TypeContext>(
-                Diagnostic.Create(
-                    descriptor: OpticsTargetTypeMustSupportWithExpressionRule,
-                    location: typeArgument.GetLocation(),
-                    messageArgs: [typeArgument]
-                )
-            );
+            return new AnalysisResult<TypeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsTargetTypeMustSupportWithExpressionRule,
+                location: typeArgument.GetLocation(),
+                messageArgs: [typeArgument]
+            ));
         }
 
         var typeContext = type switch
         {
-            lensOfType => (TypeContext)new LensOfTypeContext(Symbol: typeSymbol),
-            optionalOfType => new OptionalOfTypeContext(Symbol: typeSymbol),
+            lensOfType => new TypeContext(Kind: Lens, Symbol: typeSymbol),
+            optionalOfType => new TypeContext(Kind: Optional, Symbol: typeSymbol),
             _ => throw new InvalidOperationException($"Invalid type: {type}"),
         };
 
-        return new AnalysisSuccess<TypeContext>(typeContext);
+        return new AnalysisResult<TypeContext>.Success(typeContext);
 
         #region Local Functions
         static GenericNameSyntax GetGenericNameFromInvocation(
@@ -171,8 +164,6 @@ internal static class Helpers
         CancellationToken cancellationToken
     )
     {
-        cancellationToken.ThrowIfCancellationRequested();
-
         if (context.Attributes.Length != 1)
         {
             return null;
@@ -190,13 +181,11 @@ internal static class Helpers
 
         if (!containingTypeSymbol.IsStatic)
         {
-            return new AnalysisFailure<AttributeContext>(
-                Diagnostic.Create(
-                    descriptor: OpticsAttributeMustBeOnStaticClassRule,
-                    location,
-                    messageArgs: [containingTypeSymbol]
-                )
-            );
+            return new AnalysisResult<AttributeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsAttributeMustBeOnStaticClassRule,
+                location,
+                messageArgs: [containingTypeSymbol]
+            ));
         }
 
         if (attribute.ConstructorArguments is [{ Value: IErrorTypeSymbol }])
@@ -210,40 +199,36 @@ internal static class Helpers
 
         if (typeSymbol is null)
         {
-            return new AnalysisFailure<AttributeContext>(
-                Diagnostic.Create(
-                    descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
-                    location,
-                    messageArgs: [containingTypeSymbol]
-                )
-            );
+            return new AnalysisResult<AttributeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
+                location,
+                messageArgs: [containingTypeSymbol]
+            ));
         }
 
         if (typeSymbol is { IsRecord: false, TypeKind: not TypeKind.Struct })
         {
-            return new AnalysisFailure<AttributeContext>(
-                Diagnostic.Create(
-                    descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
-                    location,
-                    messageArgs: [typeSymbol]
-                )
-            );
+            return new AnalysisResult<AttributeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsAttributeTargetMustSupportWithExpressionRule,
+                location,
+                messageArgs: [typeSymbol]
+            ));
         }
 
         var attributeContext = kind switch
         {
-            OpticsKind.Lens => (AttributeContext)new LensOfAttributeContext(
+            Lens => (AttributeContext)new LensOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
                 TypeSymbol: typeSymbol
             ),
-            OpticsKind.Optional => new OptionalOfAttributeContext(
+            Optional => new OptionalOfAttributeContext(
                 ContainingTypeSymbol: containingTypeSymbol,
                 TypeSymbol: typeSymbol
             ),
             _ => throw new InvalidOperationException($"Invalid optics kind: {kind}"),
         };
 
-        return new AnalysisSuccess<AttributeContext>(attributeContext);
+        return new AnalysisResult<AttributeContext>.Success(attributeContext);
     }
 
     public static OfGenerationModel CreateOfGenerationModel(
@@ -265,7 +250,7 @@ internal static class Helpers
 
             switch (typeContext)
             {
-                case LensOfTypeContext { Symbol: { } symbol }:
+                case { Kind: Lens, Symbol: { } symbol }:
                 {
                     AppendTypeGenerationModel(
                         symbol,
@@ -277,7 +262,7 @@ internal static class Helpers
 
                     break;
                 }
-                case OptionalOfTypeContext { Symbol: { } symbol }:
+                case { Kind: Optional, Symbol: { } symbol }:
                 {
                     AppendTypeGenerationModel(
                         symbol,
@@ -289,6 +274,8 @@ internal static class Helpers
 
                     break;
                 }
+                default:
+                    throw new InvalidOperationException($"Invalid optics kind: {typeContext.Kind}");
             }
         }
 
@@ -340,12 +327,12 @@ internal static class Helpers
         var (kind, containingTypeSymbol, typeSymbol) = attributeContext switch
         {
             LensOfAttributeContext context => (
-                OpticsKind.Lens,
+                Lens,
                 context.ContainingTypeSymbol,
                 context.TypeSymbol
             ),
             OptionalOfAttributeContext context => (
-                OpticsKind.Optional,
+                Optional,
                 context.ContainingTypeSymbol,
                 context.TypeSymbol
             ),
@@ -565,10 +552,10 @@ internal static class Helpers
     {
         return (kind, member.IsNullable) switch
         {
-            (OpticsKind.Lens, false) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {member.TypeName}>",
-            (OpticsKind.Lens, true) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {MaybeTypeString}<{member.TypeName}>>",
-            (OpticsKind.Optional, false) => $"{OptionalOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {member.TypeName}>",
-            (OpticsKind.Optional, true) => $"{LensOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {MaybeTypeString}<{member.TypeName}>>",
+            (Lens, false) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {member.TypeName}>",
+            (Lens, true) => $"{LensOfTypeString}<{typeModel.FullyQualifiedName}, {MaybeTypeString}<{member.TypeName}>>",
+            (Optional, false) => $"{OptionalOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {member.TypeName}>",
+            (Optional, true) => $"{LensOfTypeString}<{MaybeTypeString}<{typeModel.FullyQualifiedName}>, {MaybeTypeString}<{member.TypeName}>>",
             _ => throw new InvalidOperationException($"Invalid optics kind: {kind}"),
         };
     }
@@ -585,7 +572,7 @@ internal static class Helpers
 
         switch (kind, member.IsNullable)
         {
-            case (OpticsKind.Lens, false):
+            case (Lens, false):
             {
                 stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source.{member.Name},");
                 stringBuilder.AppendLine($"{indentation}{Indent}setter: static (source, value) => source with");
@@ -595,7 +582,7 @@ internal static class Helpers
 
                 break;
             }
-            case (OpticsKind.Lens, true):
+            case (Lens, true):
             {
                 stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source is {{ {member.Name}: {{ }} value }}");
                 stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? {MaybeTypeString}.Just(value)");
@@ -607,7 +594,7 @@ internal static class Helpers
 
                 break;
             }
-            case (OpticsKind.Optional, false):
+            case (Optional, false):
             {
                 stringBuilder.AppendLine($"{indentation}{Indent}optionalGetter: static source => source.IsJust");
                 stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? {MaybeTypeString}.Just(source.Value.{member.Name})");
@@ -622,7 +609,7 @@ internal static class Helpers
 
                 break;
             }
-            case (OpticsKind.Optional, true):
+            case (Optional, true):
             {
                 stringBuilder.AppendLine($"{indentation}{Indent}getter: static source => source is {{ IsJust: true, Value: {{ }} value }}");
                 stringBuilder.AppendLine($"{indentation}{Indent}{Indent}? value.{member.Name} is {{ }} value2");

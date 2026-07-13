@@ -1,6 +1,6 @@
 using Microsoft.CodeAnalysis;
 
-using static Macaron.Optics.Generator.Helpers;
+using static Macaron.Optics.Generator.SourceGenerationHelper;
 using static Macaron.Optics.Generator.OpticsKind;
 
 namespace Macaron.Optics.Generator;
@@ -15,7 +15,7 @@ public class LensGenerator : IIncrementalGenerator
             .SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (syntaxNode, _) => IsOfInvocationCandidate(syntaxNode),
-                transform: static (generatorSyntaxContext, cancellationToken) => GetTypeContext(
+                transform: static (generatorSyntaxContext, cancellationToken) => GetTypeAnalysisContext(
                     generatorSyntaxContext,
                     cancellationToken
                 )
@@ -23,26 +23,26 @@ public class LensGenerator : IIncrementalGenerator
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
         var typeContextProvider = analysisResultProvider
-            .Where(static result => result is AnalysisSuccess<TypeContext>)
-            .Select(static (result, _) => ((AnalysisSuccess<TypeContext>)result).Context);
+            .Where(static result => result is AnalysisResult<TypeContext>.Success)
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context);
         var generationModelProvider = typeContextProvider
             .Collect()
-            .Select(static (typeContexts, cancellationToken) => CreateOfGenerationModel(
-                typeContexts,
+            .Select(static (typeAnalysisContexts, cancellationToken) => CreateOfGenerationModel(
+                typeAnalysisContexts,
                 cancellationToken
             ))
             .WithComparer(OfGenerationModelComparer.Instance);
         var lensTypeProvider = generationModelProvider
             .SelectMany(static (generationModel, _) => generationModel.LensTypes)
             .WithComparer(TypeGenerationModelComparer.Instance)
-            .WithTrackingName("LensTypeGenerationModels");
+            .WithTrackingName("LensTypeGenerationModel");
         var optionalTypeProvider = generationModelProvider
             .SelectMany(static (generationModel, _) => generationModel.OptionalTypes)
             .WithComparer(TypeGenerationModelComparer.Instance)
-            .WithTrackingName("OptionalTypeGenerationModels");
+            .WithTrackingName("OptionalTypeGenerationModel");
         var diagnosticProvider = analysisResultProvider
-            .Where(static result => result is AnalysisFailure<TypeContext>)
-            .Select(static (result, _) => ((AnalysisFailure<TypeContext>)result).Diagnostic);
+            .Where(static result => result is AnalysisResult<TypeContext>.Failure)
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Failure)result).Diagnostic);
 
         context.RegisterSourceOutput(
             source: diagnosticProvider,

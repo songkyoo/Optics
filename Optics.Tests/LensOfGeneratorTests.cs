@@ -548,6 +548,26 @@ public class LensOfGeneratorTests
         );
     }
 
+    [TestCase("LensOf")]
+    [TestCase("OptionalOf")]
+    public void When_NullableAttributeTargetUsed_Should_ReportError(string attributeName)
+    {
+        AssertDiagnostic(
+            sourceCode:
+            $$"""
+            namespace Macaron.Optics.Tests;
+
+            public readonly record struct Point(int X);
+
+            [{{attributeName}}(typeof(Point?))]
+            public static partial class PointOptics
+            {
+            }
+            """,
+            expectedDiagnosticId: "MOPT0001"
+        );
+    }
+
     [Test]
     public void When_AttributeOnNonStaticClass_Should_ReportError()
     {

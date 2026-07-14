@@ -74,8 +74,7 @@ internal static class SourceGenerationHelper
         var typeArgumentList = genericNameSyntax.TypeArgumentList;
 
         if (typeArgumentList.Arguments is not [{ } typeArgument]
-            || methodSymbol.TypeArguments is not [{ } typeArgumentSymbol]
-            || typeArgumentSymbol is not INamedTypeSymbol typeSymbol
+            || methodSymbol.TypeArguments is not [INamedTypeSymbol typeSymbol]
         )
         {
             return null;
@@ -113,9 +112,7 @@ internal static class SourceGenerationHelper
         }
 
         // Nullable한 형식은 지원하지 않는다.
-        if (typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
-            || typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-        )
+        if (IsNullableType(typeSymbol))
         {
             return new AnalysisResult<TypeContext>.Failure(Diagnostic.Create(
                 descriptor: OpticsTargetTypeCannotBeNullableRule,
@@ -203,6 +200,15 @@ internal static class SourceGenerationHelper
                 descriptor: OpticsAttributeTargetMustBeSpecifiedRule,
                 location,
                 messageArgs: [containingTypeSymbol]
+            ));
+        }
+
+        if (IsNullableType(typeSymbol))
+        {
+            return new AnalysisResult<AttributeContext>.Failure(Diagnostic.Create(
+                descriptor: OpticsTargetTypeCannotBeNullableRule,
+                location,
+                messageArgs: [typeSymbol]
             ));
         }
 
@@ -653,6 +659,12 @@ internal static class SourceGenerationHelper
             stringBuilder.AppendLine($"{indentation}{Indent}: {MaybeTypeString}.Nothing<{typeModel.FullyQualifiedName}>()");
         }
         #endregion
+    }
+
+    private static bool IsNullableType(INamedTypeSymbol typeSymbol)
+    {
+        return typeSymbol.NullableAnnotation == NullableAnnotation.Annotated
+            || typeSymbol.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T;
     }
 
     private static TypeGenerationModel CreateTypeGenerationModel(

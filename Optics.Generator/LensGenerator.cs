@@ -22,33 +22,34 @@ public class LensGenerator : IIncrementalGenerator
             )
             .Where(static result => result is not null)
             .Select(static (result, _) => result!);
-        var typeContextProvider = analysisResultProvider
-            .Where(static result => result is AnalysisResult<TypeContext>.Success)
-            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context);
-        var generationModelProvider = typeContextProvider
-            .Collect()
-            .Select(static (typeAnalysisContexts, cancellationToken) => CreateOfGenerationModel(
-                typeAnalysisContexts,
-                cancellationToken
-            ))
-            .WithComparer(OfGenerationModelComparer.Instance);
-        var lensTypeProvider = generationModelProvider
-            .SelectMany(static (generationModel, _) => generationModel.LensTypes)
-            .WithComparer(TypeGenerationModelComparer.Instance)
-            .WithTrackingName("LensTypeGenerationModel");
-        var optionalTypeProvider = generationModelProvider
-            .SelectMany(static (generationModel, _) => generationModel.OptionalTypes)
-            .WithComparer(TypeGenerationModelComparer.Instance)
-            .WithTrackingName("OptionalTypeGenerationModel");
+
+        // 진단
         var diagnosticProvider = analysisResultProvider
             .Where(static result => result is AnalysisResult<TypeContext>.Failure)
             .Select(static (result, _) => ((AnalysisResult<TypeContext>.Failure)result).Diagnostic);
 
         context.RegisterSourceOutput(
             source: diagnosticProvider,
-            action: static (sourceProductionContext, diagnostic) =>
-                sourceProductionContext.ReportDiagnostic(diagnostic)
+            action: static (sourceProductionContext, diagnostic) => sourceProductionContext.ReportDiagnostic(diagnostic)
         );
+
+        // 코드 생성
+        var typeContextProvider = analysisResultProvider
+            .Where(static result => result is AnalysisResult<TypeContext>.Success)
+            .Select(static (result, _) => ((AnalysisResult<TypeContext>.Success)result).Context)
+            .Collect()
+            .Select(static (typeAnalysisContexts, cancellationToken) => CreateOfGenerationModel(
+                typeAnalysisContexts,
+                cancellationToken
+            ))
+            .WithComparer(OfGenerationModelComparer.Instance);
+
+        // Lens 타입
+        var lensTypeProvider = typeContextProvider
+            .SelectMany(static (generationModel, _) => generationModel.LensTypes)
+            .WithComparer(TypeGenerationModelComparer.Instance)
+            .WithTrackingName("LensTypeGenerationModel");
+
         context.RegisterSourceOutput(
             source: lensTypeProvider,
             action: static (sourceProductionContext, typeModel) => AddSource(
@@ -58,6 +59,13 @@ public class LensGenerator : IIncrementalGenerator
                 kind: Lens
             )
         );
+
+        // Optional 타입
+        var optionalTypeProvider = typeContextProvider
+            .SelectMany(static (generationModel, _) => generationModel.OptionalTypes)
+            .WithComparer(TypeGenerationModelComparer.Instance)
+            .WithTrackingName("OptionalTypeGenerationModel");
+
         context.RegisterSourceOutput(
             source: optionalTypeProvider,
             action: static (sourceProductionContext, typeModel) => AddSource(

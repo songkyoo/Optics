@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Optics/Optics.csproj" />
+  <Project Path="Optics.Core/Optics.Core.csproj" />
+  <Project Path="Optics.Attribute/Optics.Attribute.csproj" />
+  <Project Path="Optics.Generator/Optics.Generator.csproj" />
+  <Project Path="Optics.Tests/Optics.Tests.csproj" />
+</Solution>

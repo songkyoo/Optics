@@ -1,7 +1,9 @@
 <Project>
-    
-  <ItemGroup>
-    <ProjectReference Remove=".\Optics.Package\Optics.Package.csproj" />
-  </ItemGroup>
-    
+
+  <PropertyGroup>
+    <OpticsVersion>1.1.0</OpticsVersion>
+    <OpticsCoreVersion>1.1.0</OpticsCoreVersion>
+    <OpticsGeneratorVersion>1.1.0</OpticsGeneratorVersion>
+  </PropertyGroup>
+
 </Project>

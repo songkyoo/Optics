@@ -8,6 +8,7 @@
     <Nullable>enable</Nullable>
     <RootNamespace>Macaron.Optics</RootNamespace>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Version>$(OpticsGeneratorVersion)</Version>
   </PropertyGroup>
 
   <ItemGroup>

@@ -20,7 +20,7 @@
 
   <PropertyGroup>
     <PackageId>Macaron.Optics.Generator</PackageId>
-    <Version>1.0.9</Version>
+    <Version>$(OpticsGeneratorVersion)</Version>
     <Authors>Gyu Song</Authors>
     <PackageLicenseExpression>Unlicense</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
@@ -42,10 +42,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition="$(TargetFramework) == 'netstandard2.0'">
-    <PackageReference Include="System.Collections.Immutable" Version="6.0.1" />
   </ItemGroup>
 
 </Project>
